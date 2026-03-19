@@ -22,7 +22,8 @@
 10. [Maps & Géolocalisation](#10-maps--géolocalisation)
 11. [Authentification](#11-authentification)
 12. [Hébergement & Déploiement](#12-hébergement--déploiement)
-13. [Synthèse des choix retenus](#13-synthèse-des-choix-retenus)
+13. [Budget produit & pilotage financier](#13-budget-produit--pilotage-financier)
+14. [Synthèse des choix retenus](#14-synthèse-des-choix-retenus)
 
 ---
 
@@ -436,7 +437,70 @@ L'un des avantages majeurs de Laravel est son écosystème first-party qui couvr
 
 ---
 
-## 13. Synthèse des choix retenus
+## 13. Budget produit & pilotage financier
+
+> Objectif : disposer d'un cadre budgétaire concret pour piloter la roadmap et éviter la dérive des coûts avant product-market fit.
+
+### 13.1 Hypothèses de montée en charge (3 ans)
+
+| Indicateur | Année 1 | Année 2 | Année 3 |
+|---|---:|---:|---:|
+| **Tatoueurs actifs** | 150-300 | 400-800 | 800-1 200 |
+| **Clients actifs (MAU)** | 1 000-3 000 | 6 000-20 000 | 20 000-60 000 |
+| **Messages/jour (moyenne)** | 1 000-4 000 | 8 000-25 000 | 25 000-80 000 |
+| **Photos stockées (cumul)** | 50k-150k | 200k-600k | 700k-2M |
+
+### 13.2 Projection budgétaire sur 3 ans (hors salaires fondateurs)
+
+| Bloc | Année 1 | Année 2 | Année 3 |
+|---|---:|---:|---:|
+| **Infrastructure & SaaS techniques** | 1 500-6 000 EUR | 6 000-18 000 EUR | 18 000-60 000 EUR |
+| **Conformité, juridique, assurances** | 4 000-12 000 EUR | 6 000-18 000 EUR | 10 000-30 000 EUR |
+| **Produit (design, QA, contenu, outils)** | 3 000-12 000 EUR | 8 000-25 000 EUR | 20 000-60 000 EUR |
+| **Acquisition & marketing** | 5 000-20 000 EUR | 20 000-80 000 EUR | 60 000-250 000 EUR |
+| **Marge d'imprévus (buffer)** | 2 000-8 000 EUR | 5 000-15 000 EUR | 15 000-40 000 EUR |
+| **Total annuel cible** | **15 500-58 000 EUR** | **45 000-156 000 EUR** | **123 000-440 000 EUR** |
+
+> **Repère** : la hausse principale provient de l'acquisition et du coût variable des médias/messages avec l'augmentation des utilisateurs actifs.
+
+### 13.3 Trajectoire d'infrastructure mensuelle liée à la charge
+
+| Poste infra | Année 1 (EUR/mois) | Année 2 (EUR/mois) | Année 3 (EUR/mois) |
+|---|---:|---:|---:|
+| **Backend Laravel (Railway/équivalent)** | 10-40 | 40-150 | 150-600 |
+| **Base PostgreSQL (Supabase/équivalent)** | 25-80 | 80-300 | 300-1 200 |
+| **Redis (Upstash/équivalent)** | 5-20 | 20-120 | 120-600 |
+| **Médias (Cloudinary/CDN)** | 0-80 | 80-500 | 500-2 500 |
+| **Maps & géolocalisation** | 0-40 | 20-150 | 100-500 |
+| **Total infra mensuel cible** | **40-260** | **240-1 220** | **1 170-5 400** |
+
+### 13.4 Ventilation cible du budget total
+
+| Catégorie | Année 1 | Année 2 | Année 3 |
+|---|---:|---:|---:|
+| **Produit & développement** | 45-60% | 35-50% | 30-45% |
+| **Acquisition / marketing** | 20-35% | 30-45% | 35-55% |
+| **Infra & SaaS** | 8-15% | 12-20% | 15-25% |
+| **Légal, conformité, comptabilité** | 8-15% | 8-15% | 8-15% |
+| **Buffer** | 5-10% | 5-10% | 5-10% |
+
+### 13.5 Garde-fous de pilotage (go / no-go)
+
+- **Seuil infra** : si l'infrastructure dépasse **12% du MRR** pendant 3 mois, plan d'optimisation obligatoire (caching, compression média, revue des plans SaaS).
+- **Seuil performance** : si la latence P95 API dépasse **400 ms** sur 2 sprints, investissement prioritaire sur la perf avant nouvelles features.
+- **Seuil runway** : maintenir **12 mois de runway** minimum ; en dessous, gel des dépenses discrétionnaires.
+- **Seuil compliance** : toute feature impliquant données de santé déclenche revue RGPD/sécurité avant release.
+- **Seuil architecture** : migration vers architecture distribuée seulement avec saturation mesurée (coût, SLO, disponibilité), pas par anticipation.
+
+### 13.6 Lecture financière synthétique
+
+- **Année 1** : focus validation marché et coûts maîtrisés.
+- **Année 2** : phase d'accélération France, budget tiré par acquisition et volume média.
+- **Année 3** : phase de scale, coûts d'exploitation et de conformité deviennent structurants.
+
+---
+
+## 14. Synthèse des choix retenus
 
 | Couche | Technologie retenue | Alternative écartée | Raison principale |
 |---|---|---|---|
@@ -461,7 +525,3 @@ L'un des avantages majeurs de Laravel est son écosystème first-party qui couvr
 > **"Maximiser la vélocité de développement grâce à l'écosystème Laravel first-party, minimiser les coûts d'infrastructure, sans créer de dette technique bloquante pour la scale-up."**
 
 Laravel couvre nativement (Cashier, Reverb, Sanctum, Socialite, Horizon, Octane) la quasi-totalité des besoins sans librairie tierce. La stack mobile et web reste en TypeScript (React Native + Next.js), les deux couches communiquant avec le backend Laravel via une API REST + WebSocket standard.
-
----
-
-*Document soumis à validation. Toute modification doit être discutée en équipe et versionnée.*
