@@ -3,8 +3,8 @@
 
 **Version :** 4.0  
 **Date :** 27 février 2026  
-**Auteurs :** MaxOuvrard, Cyrien, Dylan Bathig  
-**Statut :** Draft — En discussion  
+**Auteurs :** Maxence Ouvrard, Dylan Bathig  
+**Statut :** En vérification
 
 ---
 
@@ -110,6 +110,32 @@ Ces fonctionnalités ont un impact direct sur les choix d'architecture :
 > **Décision** : L'AR en V1 peut être implémentée avec React Native Vision Camera. Migration partielle vers du natif envisageable en V2 si l'AR devient un pilier marketing fort.
 
 ### 3.3 ✅ Choix retenu : **React Native + Expo SDK 52**
+
+### 3.4 Intégration AR cible : **Three.js + WebXR**
+
+Pour la prévisualisation immersive, l'application intègre un module **WebAR** basé sur **Three.js** et l'API **WebXR**.
+
+| Élément | Choix retenu | Rôle |
+|---|---|---|
+| **Moteur 3D** | **Three.js** | Rendu temps réel des overlays et objets 3D sur le flux caméra |
+| **API immersive** | **WebXR** | Gestion des sessions AR et du tracking sur navigateurs compatibles |
+| **Intégration mobile** | **Écran WebView dans l'app RN** | Réutiliser une base AR unique iOS/Android sans dupliquer du natif |
+| **Fallback** | **Mode caméra 2D (Vision Camera)** | Continuité de service sur appareils ou navigateurs non compatibles WebXR |
+
+#### Principes d'architecture
+
+- Le calcul métier reste côté API Laravel ; le module AR consomme uniquement les assets médias signés et les métadonnées nécessaires.
+- Les assets 3D (textures, masques, modèles) sont versionnés et servis via CDN pour limiter la latence.
+- Le flux AR est isolé dans un module frontal indépendant afin de pouvoir évoluer vers du natif (ARKit/ARCore) sans refonte backend.
+
+#### Contraintes et garde-fous
+
+- **Compatibilité** : WebXR varie selon OS/navigateur ; matrice de tests obligatoire sur devices cibles.
+- **Performance** : budget cible de rendu à 30-60 FPS, avec adaptation automatique de qualité (LOD, résolution, post-processing).
+- **UX** : bascule explicite entre mode AR et mode aperçu photo pour éviter les blocages sur appareils non supportés.
+- **Sécurité médias** : conservation des URLs signées Cloudinary, expiration courte, pas d'exposition d'originaux non watermarqués.
+
+> **Décision** : la V1 AR est construite autour de **Three.js + WebXR** avec fallback 2D. Cette approche maximise la vitesse d'itération produit tout en gardant une trajectoire de migration vers AR natif si les besoins de tracking avancé augmentent.
 
 ---
 
@@ -505,7 +531,7 @@ L'un des avantages majeurs de Laravel est son écosystème first-party qui couvr
 | Couche | Technologie retenue | Alternative écartée | Raison principale |
 |---|---|---|---|
 | **App mobile** | React Native + Expo | Flutter, Natif | Time-to-market, écosystème |
-| **AR** | RN Vision Camera | ARKit/ARCore natif | Suffisant V1, coût dev |
+| **AR** | Three.js + WebXR (avec fallback RN Vision Camera) | ARKit/ARCore natif full custom | Vitesse d'itération, mutualisation cross-platform |
 | **Web** | Next.js 15 + Vercel | Astro, Webflow | Évolutivité, shop dynamique |
 | **Backend** | Laravel 11 + Octane | NestJS, Symfony | Productivité, écosystème natif |
 | **Architecture** | Monolithe modulaire | Microservices | Charge faible, petite équipe |
