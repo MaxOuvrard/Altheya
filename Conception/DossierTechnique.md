@@ -1,176 +1,167 @@
 # Stratégie Technique & Architecture
 ## Application de Tatouage Thérapeutique & E-commerce
 
-Ce document détaille les choix d'architecture, les outils et l'infrastructure nécessaires pour construire notre plateforme (du prototype MVP jusqu'à la version finale destinée au grand public). Il est conçu pour donner une vision claire à toute l'équipe : il fixe un cap technique rigoureux pour les développeurs, tout en restant compréhensible pour les profils non techniques (produit, marketing, direction).
+Ce document détaille les choix d'architecture, les outils et l'infrastructure nécessaires pour construire notre plateforme (du prototype MVP jusqu'à la version finale destinée au grand public). 
 
 ---
 
-## 1. Notre philosophie de développement (Le "Buy vs Build")
+## 2. Les défis de l'application
 
-Notre application couvre un périmètre métier très large et sensible. Nous faisons de la mise en relation géolocalisée, nous gérons une messagerie sécurisée autour de zones corporelles (cicatrices, post-opératoire, mastectomies), nous opérons des paiements avec séparation des fonds (split de commissions), et nous gérons une boutique e-commerce classique.
-
-Vouloir tout coder de zéro serait une erreur fatale qui épuiserait notre budget et notre temps. Pour éviter de construire une "usine à gaz", nous appliquons trois règles d'or :
-
-* **Aller à l'essentiel (Time-to-market) :** Nous utilisons des frameworks "opinionated" (qui imposent des règles et de bonnes pratiques dès l'installation, comme Laravel). Cela permet aux développeurs de ne pas perdre des semaines à débattre sur la façon d'organiser les dossiers ou de recréer des systèmes basiques (comme la réinitialisation de mots de passe, l'envoi d'emails ou la sécurisation des API).
-* **Déléguer la complexité légale et matérielle :** Le web moderne regorge de services spécialisés. La conformité bancaire (KYC, DSP2) et le stockage massif de médias haute définition sont délégués à des experts (Stripe pour l'argent, un fournisseur Cloud S3 pour les fichiers). Nous ne sommes ni une banque, ni un hébergeur de fichiers.
-* **Séparer les domaines métiers :** Dès le premier jour, le code de la partie "Réservation thérapeutique" et celui de la "Boutique E-commerce" seront clairement séparés dans le code de l'API. Si la vente de crèmes cicatrisantes explose et nécessite des serveurs dédiés, nous pourrons séparer cette boutique physiquement sans casser la partie prise de rendez-vous.
-
+| Le besoin métier               | Le problème technique / légal | Notre solution architecturale                                                                                                                                           |
+|:-------------------------------| :--- |:------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Photos médicales sensibles** | Stocker des données de santé est strictement encadré par la loi (RGPD renforcé). Une fuite de données détruirait la confiance en notre plateforme. | Base de données et fichiers hébergés sur des serveurs certifiés **HDS** (Hébergeur Données de Santé) en France. Chiffrement AES-256.                                    |
+| **Paiements et commissions**   | Encaisser un client pour le compte d'un tiers (le tatoueur) exige un agrément bancaire lourd. Sans ça, c'est illégal. | Utilisation de **Stripe**. L'argent transite sur un compte : Stripe prélève notre commission et reverse le reste automatiquement au tatoueur.                           |
+| **Messagerie en temps réel**   | Rafraîchir l'application toutes les 2 secondes pour voir si un tatoueur a répondu vide la batterie du téléphone et surcharge nos serveurs. | Mise en place de **WebSockets** (une connexion bidirectionnelle invisible maintenue ouverte) via Laravel Reverb pour un chat instantané.                                |
+| **Boutique E-commerce**        | Vendre des soins post-tatouage demande de gérer des paniers complexes, des frais de port. | Gestion du catalogue via notre API, mais paiement final délégué à **Stripe** pour maximiser le taux de conversion et sécuriser la carte bancaire.                       |
+| **Visualisation en AR**         | Superposer un tatouage numérique sur un corps en relief (cicatrices, courbes) demande des calculs 3D lourds qui peuvent faire ramer un téléphone classique. | TODO: Utilisation de moteurs de rendu natifs optimisés (ARKit/ARCore via React Native) pour calculer la déformation de manière fluide et sans surcharger l'application. |
 ---
 
-## 2. Les défis de l'application (et comment on les relève)
-
-| Le besoin métier | Le problème technique / légal | Notre solution architecturale |
-| :--- | :--- | :--- |
-| **Photos médicales sensibles** | Stocker des données de santé est strictement encadré par la loi (RGPD renforcé). Une fuite de données détruirait la confiance en notre plateforme. | Base de données et fichiers hébergés sur des serveurs certifiés **HDS** (Hébergeur Données de Santé) en France. Chiffrement AES-256 en base et TLS 1.3 sur le réseau. |
-| **Paiements et commissions** | Encaisser un client pour le compte d'un tiers (le tatoueur) exige un agrément bancaire lourd. Sans ça, c'est illégal. | Utilisation de **Stripe Connect**. L'argent transite sur un compte de cantonnement (escrow) : Stripe prélève notre commission et reverse le reste automatiquement au tatoueur. |
-| **Messagerie en temps réel** | Rafraîchir l'application toutes les 2 secondes pour voir si un tatoueur a répondu vide la batterie du téléphone et surcharge nos serveurs. | Mise en place de **WebSockets** (une connexion bidirectionnelle invisible maintenue ouverte) via Laravel Reverb pour un chat instantané. |
-| **Boutique E-commerce** | Vendre des soins post-tatouage demande de gérer des paniers complexes, des frais de port et des abandons. | Gestion du catalogue via notre API, mais paiement final délégué à **Stripe Checkout** pour maximiser le taux de conversion et sécuriser la carte bancaire. |
-
----
-
-## 3. Les outils qu'on va utiliser (La Stack Technique)
+## 3. La stack technique
 
 ### 3.1. L'application Mobile : React Native + Expo
 
-Au lieu de développer une l'application iPhone (en langage Swift) et une pour Android (en langage Kotlin), nous utiliserons une base de code unique.
+Au lieu de développer une application iPhone (en langage Swift) et une pour Android (en langage Kotlin), nous utiliserons une base de code unique.
 
 #### Pourquoi Expo ?
 Dans le monde de React Native, Expo est devenu incontournable. Sa version moderne (via *Prebuild* et les modules natifs) permet de coder en JavaScript/TypeScript tout en gardant un accès total et sans restriction au matériel du téléphone (appareil photo, géolocalisation en arrière-plan, notifications push natives).
+
 #### Le super-pouvoir d'Expo (EAS Update)
-Habituellement, quand on corrige un petit bug sur une application, il faut la renvoyer à Apple et Google et attendre 48h de validation. Avec Expo EAS Update, on peut pousser des corrections mineures (texte, couleur, petit bug de bouton) directement sur le téléphone des utilisateurs à la prochaine ouverture de l'app, de manière totalement invisible.
+Avec Expo EAS Update, on peut pousser des corrections mineures (texte, couleur, petit bug de bouton) directement sur le téléphone des utilisateurs à la prochaine ouverture de l'app, de manière totalement invisible (sans attendre la validation Apple/Google).
+
 #### L'expérience utilisateur (UX)
-Nous coderons en TypeScript pour éviter un maximum de bugs. Nous utiliserons des outils modernes de "mise en cache" (comme *React Query*) pour que l'application s'affiche instantanément même si l'utilisateur capte mal la 4G (en affichant les données sauvegardées lors de la dernière connexion).
+Nous utiliserons TypeScript pour éviter un maximum de bugs. Nous utiliserons des outils modernes de "mise en cache" (comme *React Query*) pour que l'application s'affiche instantanément même si l'utilisateur capte mal la 4G.
 
-### 3.2. Le Cerveau (L'API Backend) : Laravel (PHP 8.3)
+### 3.2. L'API Backend : Laravel (PHP 8.3)
 
-Laravel sera le "chef d'orchestre" de notre plateforme. C'est lui qui détient les règles de l'entreprise. Il agit comme une API RESTful : il n'affiche pas de pages web, il se contente de recevoir les demandes de l'application mobile, de faire les calculs, et de renvoyer de la donnée pure (du JSON). Nous l'avons choisi pour son écosystème ultra-complet qui nous fait gagner des mois de travail :
+Laravel sera la base de notre plateforme.
+
+Il agit comme une API RESTful : il n'affiche pas de pages web, il se contente de recevoir les demandes de l'application mobile, de faire les calculs, et de renvoyer de la donnée pure (du JSON).
 
 #### Base de données (Eloquent ORM)
-C'est un outil intégré qui traduit notre code en requêtes de base de données. Il rend la gestion des relations évidente (ex: récupérer un *Patient* qui a plusieurs *Rendez-vous*, qui ont chacun une *Facture* et des *Messages* liés).
+C'est un outil intégré qui traduit notre code en requêtes de base de données. Il rend la gestion des relations évidente.
+
 #### Sécurité des connexions (Sanctum)
-Gère ce qu'on appelle les "Tokens" (jetons sécurisés). Quand un utilisateur se connecte, l'API lui donne un jeton. À chaque action, l'app mobile présente ce jeton pour prouver son identité.
+Gère les "Tokens" (jetons sécurisés) pour prouver l'identité de l'utilisateur à chaque action.
+
 #### Paiements (Cashier)
-Un package officiel Laravel conçu spécifiquement pour dialoguer avec Stripe. Il gère tout seul la vérification des paiements validés, les échecs de carte bancaire, et la génération des factures PDF.
+Un package officiel Laravel conçu spécifiquement pour dialoguer avec Stripe (gestion des paiements, échecs, factures PDF). 
+
 #### Messagerie (Reverb)
-Intégré en 2024 à Laravel, c'est un serveur WebSocket ultra-rapide. Avant, il fallait créer un serveur séparé (souvent en Node.js) juste pour le chat. Maintenant, tout reste dans Laravel, ce qui simplifie énormément la maintenance.
+Un serveur WebSocket ultra-rapide intégré à Laravel pour la messagerie en temps réel, évitant de devoir maintenir un serveur Node.js séparé.
 
 ### 3.3. Base de données et Tâches de fond
 
-#### PostgreSQL
-C'est notre base de données principale. Solide comme un roc, elle a été choisie plutôt que MySQL grâce à son extension **PostGIS**. C'est ce qui nous permet de faire des calculs géospatiaux complexes ultra-rapides. C'est grâce à ça qu'on peut dire à l'appli : *"Trouve-moi tous les tatoueurs certifiés en reconstruction mammaire dans un rayon de 50 km autour de la position GPS du patient"*.
-#### Redis (La mémoire courte et le gestionnaire de tâches)
-Redis est une base de données qui vit dans la mémoire vive (RAM) du serveur. Il est incroyablement rapide. On l'utilise pour deux choses : le cache (stocker les résultats des recherches fréquentes pour soulager PostgreSQL) et les **Queues (files d'attente)**. Si 500 utilisateurs prennent un RDV en même temps, Laravel confie l'envoi des 500 emails de confirmation et la génération des 500 factures à Redis. Redis les met en file d'attente et les traite en arrière-plan (background jobs) sans faire ramer l'application pour les utilisateurs.
+* **PostgreSQL :** C'est notre base de données principale. Solide comme un roc, elle a été choisie plutôt que MySQL grâce à son extension **PostGIS**. C'est ce qui nous permet de faire des calculs géospatiaux complexes ultra-rapides.
+* **Redis (Cache & Queues) :** Base de données ultra-rapide en mémoire vive (RAM). On l'utilise pour stocker les résultats fréquents et pour gérer les files d'attente (background jobs) comme l'envoi d'emails en masse sans ralentir l'application.
 
-### 3.4. Le stockage des médias (Cloud S3 + CDN)
+### 3.4. Le stockage des médias - Object storage compatible S3
 
-Dans une application où le visuel est roi (portfolio des artistes) et où les photos sont des données de santé (photos de cicatrices envoyées dans le chat privé), la gestion des fichiers est vitale.
-On ne stocke **aucune** image sur les disques de nos propres serveurs. Cela complexifie les sauvegardes et sature vite l'espace.
+Nous avons pris la décision de ne stocker **aucune** image sur les disques de nos propres serveurs applicatifs.
 
-* Les images sont envoyées directement depuis le téléphone vers un service **Object Storage compatible S3** (ex: Scaleway en France).
-* **Protection HDS (Secret Médical) :** Lorsqu'un tatoueur veut voir la photo clinique envoyée par un patient, notre API vérifie qu'il a le droit de la voir, puis génère une "URL signée". C'est un lien chiffré valable uniquement pendant 5 minutes. S'il copie ce lien et le donne à quelqu'un d'autre une heure plus tard, le lien affichera une erreur. L'image disparaît ainsi du web public.
-* **CDN (Content Delivery Network) :** À l'inverse, pour les photos publiques (le book du tatoueur), les images passent par un réseau de serveurs relais (CDN) pour s'afficher instantanément sur le téléphone du client, qu'il soit à Paris, Marseille ou Brest.
+Gérer soi-même des milliers d'images saturerait rapidement nos disques, demande une maintenance suplémentaire et nous exposerait à des risques légaux majeurs.
 
----
+Les photos échangées (cicatrices, post-opératoire) étant considérées par la loi comme des **données de santé ultra-sensibles**, obtenir nous-mêmes la certification légale pour les héberger coûterait une fortune en audits de sécurité.
 
-## 4. Sécurité et Santé (Contraintes Légales Incontournables)
+C'est pourquoi nous déléguons cette responsabilité lourde à des hébergeurs spécialisés via un **stockage massif externe (Object Storage S3)**. Pour les photos cliniques, le fournisseur doit obligatoirement posséder l'agrément légal **HDS (Hébergeur de Données de Santé)**.
 
-Ce projet touchant au corps et à l'historique médical, l'architecture "Privacy by Design" (la sécurité dès la conception) n'est pas une option, c'est une obligation légale.
+Le secret médical est garanti par des "URLs signées" : des liens chiffrés générés à la volée qui ne fonctionnent que quelques minutes. Une fois le délai écoulé, l'image est totalement bloquée, réduisant le risque de fuites de données.
 
-1. **Cloisonnement des données (RBAC - Role-Based Access Control) :** Les règles d'autorisation (Policies) sont codées en dur dans le cœur du backend. Un tatoueur ne pourra techniquement jamais trafiquer l'application pour interroger l'API et récupérer une conversation destinée à un autre tatoueur. Les droits sont stricts.
-2. **Hébergement certifié HDS (Hébergeur de Données de Santé) :** C'est une obligation stricte en France dès que l'on manipule des données permettant d'identifier l'état de santé d'un individu. L'ensemble de notre infrastructure (serveurs applicatifs, base de données PostgreSQL, stockage de fichiers S3) devra être souscrit sur les offres spécifiques "HDS" de fournisseurs qualifiés (comme OVHcloud, Scaleway, AWS ou Azure régions France). Ces centres de données subissent des audits physiques et logiciels drastiques.
+À l'inverse, pour les photos publiques comme le book du tatoueur, la priorité n'est plus le secret absolu mais la vitesse d'affichage. Ces images passent donc par un **CDN (Content Delivery Network)**, un réseau de serveurs relais qui permet d'afficher les portfolios instantanément sur le téléphone du patient, avec un temps de chargement très réduit.
 
 ---
 
-## 5. Comment on héberge tout ça (Infrastructure K3s)
+## 7. Réalité Augmentée
 
-Pour garantir que l'application reste rapide, ne plante jamais sous la charge, mais ne coûte pas une fortune au lancement, nous utilisons **Kubernetes**. Et plus précisément sa distribution allégée : **K3s**.
+Permettre à un patient de visualiser un tatouage de reconstruction sur sa propre peau (sur une cicatrice ou une zone post-opératoire) avant de passer à l'acte est un argument de vente massif qui lève un énorme frein psychologique.
 
-Kubernetes permet d'orchestrer nos applications sous forme de "conteneurs" (Docker). Plutôt que de payer très cher les versions managées par les géants américains, nous installerons K3s sur des VPS (Virtual Private Servers) loués en Europe. Cela divise notre facture d'hébergement par 5 tout en gardant une technologie de niveau entreprise.
+Nous utiliserons techniquement de l'**AR (Réalité Augmentée)** en utilisant la caméra du smartphone de l'utilisateur.
 
-* **Traefik (Le routeur) :** C'est le portier à l'entrée de notre infrastructure. Il reçoit le trafic internet, sécurise les connexions (force le HTTPS), et distribue intelligemment les requêtes vers l'API ou vers le serveur de chat en temps réel.
-* **Staging (L'environnement de Pré-production) :** Un seul serveur modeste qui fait tourner une copie exacte de l'application. Il est relié aux environnements "Bacs à sable" (Test) de Stripe. C'est là que l'équipe teste et valide les nouveautés avant de les proposer au public.
-* **Production (Le Live) :** Au minimum deux serveurs liés entre eux (un "Master" et un "Worker"). Si un composant matériel brûle chez l'hébergeur sur le serveur A, Kubernetes détecte la panne et bascule instantanément tout le trafic sur le serveur B. L'utilisateur mobile ne verra même pas de coupure.
-* **Sauvegarde de la base de données :** Pour une sécurité absolue, la base de données PostgreSQL ne sera pas gérée à l'intérieur de Kubernetes, mais via un service "Managed Database" chez notre hébergeur. L'hébergeur s'occupe de faire des sauvegardes chiffrées automatiques tous les jours et nous permet de remonter le temps à la minute près (système PITR - Point In Time Recovery) en cas de fausse manipulation de notre part.
+### Le défi technique
+L'AR sur le corps humain est un domaine complexe de la vision par ordinateur :
+* **La déformation et le relief :** Contrairement à un filtre visage, un sein, un ventre ou un tissu cicatriciel n'ont pas de repères fixes. L'algorithme doit comprendre la topographie pour éviter que le tatouage "flotte".
+* **Le format :** Les tatoueurs devront fournir des œuvres parfaitement détourées (fichiers PNG avec transparence gérée) pour un rendu naturel sur la peau.
+
+### L'implémentation
+
+Pour la partie Réalité Augmentée, nous utiliserons le duo WebXR + Three.js. Cette combinaison permet de créer des rendus 3D fluides et de projeter le tatouage sur le corps directement dans l'interface de l'application.
+
+C'est un choix de flexibilité : l'utilisation de Three.js nous donne un contrôle total sur l'apparence visuelle (gestion de la transparence de l'encre, texture de la peau), tandis que WebXR assure la compatibilité entre iPhone et Android.
+
+Cela nous permet de lancer cette fonctionnalité innovante sans alourdir l'application, tout en nous laissant la liberté d'évoluer vers d'autres solutions plus poussées si la précision sur les tissus cicatriciels l'exige par la suite.
+
+---
+
+## 4. Sécurité et Santé
+
+Étant donné la nature intime et médicale des informations échangées sur notre plateforme (photos de cicatrices, historique post-opératoire), nous allons devoir être **totalement intransigeants au niveau de la sécurité pour éviter la moindre fuite de données**.
+
+Une compromission de ces informations détruirait instantanément la confiance de nos utilisateurs et nous exposerait à de lourdes sanctions pénales.
+
+Pour garantir cette protection, notre système repose sur une règle d'or : donner le moins d'accès possible à tout le monde. Nous mettons en place un cloisonnement strict des informations directement au cœur de l'application.
+
+Concrètement, cela signifie qu'un utilisateur ou un professionnel n'aura accès qu'aux seules données qui lui sont strictement nécessaires.
+
+Les conversations privées et les photos cliniques sont totalement verrouillées à la source, ce qui rend impossible la consultation d'un dossier ou d'un échange par une personne non autorisée.
+
+Concernant la protection des informations médicales, la loi française impose un hébergement certifié HDS (Hébergeur de Données de Santé). Pour maîtriser nos coûts de lancement tout en sécurisant l'essentiel, nous adoptons une approche pragmatique en deux temps.
+
+Dès le premier jour, tout ce qui stocke durablement la donnée sensible sera obligatoirement hébergé sur des infrastructures certifiées HDS.
+
+Cela concerne exclusivement notre base de données (qui contient les messages et informations des patients) et notre espace de stockage S3 (qui héberge les photos cliniques).
+
+En revanche, nos serveurs applicatifs qui font transiter l'information et d'exécuter le code sans jamais rien sauvegarder sur leurs disques, seront dans un premier temps déployés sur des serveurs classiques et sécurisés.
+
+Ce choix stratégique nous permet de réduire drastiquement nos frais d'infrastructure au début du projet.
+
+Par la suite, lorsque la plateforme sera rentable et nécessitera de passer à l'échelle, nous basculerons également ces serveurs applicatifs sur des offres HDS afin d'atteindre une conformité juridique absolue.
+
+---
+
+## 5. Comment on héberge tout ça ?
+
+Pour garantir que l'application reste rapide, résiliente et abordable au lancement, notre infrastructure repose sur une séparation stricte entre le stockage des données et le code applicatif.
+
+D'un côté, nous confions la gestion de nos données critiques directement à notre hébergeur via des services clés en main ("Managed").
+
+Notre base de données principale **PostgreSQL** ainsi que notre système de cache et de files d'attente avec **Redis** seront totalement managés.
+
+Ce choix nous garantit des performances optimales, des mises à jour de sécurité transparentes et des sauvegardes chiffrées automatiques, l'avantage principal de ce choix est que les sauvegardes (backups) seront directement gérées par le provider, ce qui nous évitera d'avoir à nous en occuper.
+
+De l'autre côté, pour faire tourner l'API et Websockets, nous utilisons Kubernetes via sa distribution allégée K3s.
+
+Nos serveurs applicatifs de production feront tourner notre application sous forme de conteneurs isolés.
+À l'entrée de cette infrastructure, le routeur Traefik se chargera de recevoir le trafic, de forcer les connexions sécurisées (HTTPS) et de répartir intelligemment les requêtes, basculant instantanément le trafic si un serveur venait à défaillir.
+
+En parallèle, un serveur modeste de pré-production copiera cette architecture pour nous permettre de tester les nouveautés, les paiements factices avant de les pousser en production.
+
+Le véritable atout de cette architecture hybride, c'est son évolutivité et son indépendance.
+
+En encapsulant toute notre logique applicative dans K3s et en sortant la base de données de nos serveurs, nous ne sommes pas prisonniers de notre hébergeur actuel.
+
+À l'avenir, lorsque nous devrons migrer nos serveurs applicatifs vers un fournisseur certifié HDS, nous pourrons déplacer l'intégralité de notre cluster Kubernetes chez n'importe quel autre acteur du marché avec une certaines facilités.
 
 ---
 
 ## 6. Qualité et Déploiement Automatisé (CI/CD)
 
-L'objectif de cette plateforme est d'atteindre le **"Zéro régression"**. Quand on touche à la santé et au porte-monnaie des utilisateurs, on ne peut pas se permettre de casser une fonctionnalité en essayant d'en rajouter une nouvelle.
+Objectif **"Zéro régression"**.
 
-Aucun code n'est mis en production s'il n'a pas été validé de bout en bout par nos robots de test. Nous mettrons en place un pipeline CI/CD (Intégration et Déploiement Continus) via GitHub Actions ou GitLab CI.
+Nous utiliserons un pipeline CI/CD (GitHub Actions ou GitLab CI).
 
-Dès qu'un développeur propose d'ajouter une modification au code, la machine prend le relais :
+Pour garantir l'absence de bugs lors de nos mises à jour, nous mettons en place une matrice de tests automatisés à tous les niveaux.
 
-1. **Analyse statique :** Des outils (comme *PHPStan* pour le backend et *ESLint* pour le mobile) lisent le code pour vérifier qu'il respecte les standards et ne contient pas de failles de sécurité grossières.
-2. **Lancement de la Matrice de Qualité (Les tests automatiques) :**
+Côté backend, l'outil Pest (PHP) se charge de valider la logique métier et la sécurité de notre API.
 
-| Ce qu'on teste | L'outil utilisé | Exemple concret vérifié par la machine |
-| :--- | :--- | :--- |
-| **Logique métier (Backend)** | Pest (PHP) | Le robot simule un paiement et vérifie que la commission de la plateforme sur un panier e-commerce + l'acompte du tatouage tombent bien au centime près. |
-| **Sécurité (API)** | Pest / HTTP Tests | Le robot fabrique un faux token expiré et essaie de lire un profil : il vérifie qu'il est bien rejeté par le système (Erreur 401 Unauthorized). |
-| **Composants (Mobile)** | Jest (TypeScript) | Le robot vérifie l'écran de l'appli : le bouton "Valider le RDV et payer" doit rester strictement inactif tant que les cases de consentement aux risques médicaux ne sont pas cochées. |
-| **Parcours complet (E2E)** | Maestro | C'est le test ultime. Un automate lance l'app mobile compilée, clique partout comme un humain, crée un compte, cherche un tatoueur, prend un RDV et envoie un message dans le chat. |
+Il vérifie automatiquement des opérations critiques, comme s'assurer que le calcul d'une commission Stripe tombe juste au centime près, ou qu'une requête avec un accès expiré est immédiatement rejetée.
 
-3. **Déploiement invisible (Rolling Update) :** Si et seulement si la machine valide ces 4 étapes (tous les voyants sont au vert), le système compile la nouvelle version et l'envoie sur le cluster K3s de production. Kubernetes va alors remplacer petit à petit les anciens conteneurs par les nouveaux, sans jamais interrompre le service. Nos utilisateurs n'auront **aucune coupure** ("Zero-downtime deployment").
+Côté application mobile, nous utilisons Jest (TypeScript) pour tester nos composants isolés, par exemple pour vérifier qu'un bouton de paiement reste inactif tant que les conditions médicales ne sont pas cochées.
 
----
+Enfin, pour valider l'expérience globale, nous utilisons Maestro.
 
-## 7. Organisation de l'Équipe et Méthodologie (Le Workflow)
+Cet outil de test simule le comportement d'un véritable utilisateur humain directement sur l'interface de l'application mobile React Native. Il se connecte, navigue, recherche un tatoueur, prend un rendez-vous et écrit dans le chat, garantissant que tout le parcours fonctionne parfaitement de bout en bout avant chaque déploiement.
 
-Avoir les bons outils ne suffit pas, il faut que l'équipe sache travailler ensemble sans se marcher sur les pieds. Nous utiliserons une approche agile et un standard de l'industrie pour la gestion du code : le **GitFlow**.
+Une fois les tests validés, Kubernetes déclenche un déploiement invisible (Rolling Update).
 
-* **Gestion du code (Git / GitHub) :** * La branche `main` contient le code de production (l'application utilisée par les vrais clients). Personne n'a le droit d'y coder directement.
-    * La branche `develop` contient le code de pré-production (pour les tests internes).
-    * Quand un développeur travaille sur une fonctionnalité (ex: "Ajout du panier e-commerce"), il crée une branche isolée (`feature/panier`).
-* **Code Review (Revue de code) :** Avant d'intégrer son travail, le développeur ouvre une "Pull Request" (PR). Un autre membre de l'équipe (ou le Lead Dev) doit obligatoirement relire le code et le valider. Cela permet de partager la connaissance et d'éviter les bugs évidents.
-* **Sprints :** Le développement se fait par cycles courts de 2 semaines. À la fin de chaque sprint, on livre une version testable de l'application. On ne passe pas 6 mois dans un tunnel sans voir le produit.
+Au lieu de couper l'accès pour installer la mise à jour, le système remplace les anciens serveurs par les nouveaux un par un, de manière fluide.
 
----
-
-## 8. Roadmap Technique (Le Découpage des Phases)
-
-Vouloir tout sortir le premier jour est le meilleur moyen de ne jamais lancer le projet. Nous découpons le développement en trois grandes phases.
-
-### Phase 1 : Le MVP (Minimum Viable Product) - La mise en relation
-* **Objectif :** Valider le besoin utilisateur et générer les premières commissions.
-* **Fonctionnalités :** * Inscription / Connexion sécurisée (Patient et Tatoueur).
-    * Profils des tatoueurs et Portfolio (Hébergement S3 avec URLs éphémères).
-    * Recherche par géolocalisation simple (PostGIS).
-    * Prise de RDV avec versement de l'acompte (Stripe Connect).
-    * Messagerie texte basique (WebSockets via Reverb).
-
-### Phase 2 : La V1 - L'écosystème complet
-* **Objectif :** Augmenter le panier moyen et fluidifier l'expérience.
-* **Fonctionnalités :**
-    * E-commerce intégré (Catalogue de soins post-tatouage, paiement via Stripe Checkout).
-    * Messagerie avancée (Envoi sécurisé de photos médicales dans le chat privé).
-    * Notifications Push natives pour les rappels de RDV ou les nouveaux messages.
-    * Paiement du solde de la prestation directement via l'application.
-
-### Phase 3 : Le Scale - Automatisation et Croissance
-* **Objectif :** Absorber la charge et fidéliser.
-* **Fonctionnalités :**
-    * Abonnements mensuels pour les tatoueurs (mise en avant, outils de gestion).
-    * Tableau de bord analytique (pour la plateforme et les professionnels).
-    * Mise en place de l'auto-scaling sur Kubernetes (le cluster ajoute des serveurs tout seul quand le trafic augmente).
-
----
-
-## 9. Budget et Coûts d'Infrastructure (Phase de Lancement)
-
-L'avantage de notre architecture K3s sur VPS couplée à des services managés ciblés, c'est qu'elle permet d'avoir une robustesse de niveau "Entreprise" pour un budget de "Startup".
-
-*Voici une estimation réaliste des coûts d'hébergement mensuels pour la mise en production de la V1 (pour environ 1 000 utilisateurs actifs) :*
-
-| Service | Fournisseur cible (HDS / Europe) | Rôle dans l'architecture | Coût mensuel estimé |
-| :--- | :--- | :--- | :--- |
-| **Serveurs VPS (x2)** | Hetzner / OVH | Hébergement du cluster K3s (API Laravel, Redis, WebSockets). | ~ 30 € |
-| **Base de Données** | Scaleway (Managed DB) | PostgreSQL managé avec sauvegardes automatiques. | ~ 35 € |
-| **Stockage Médias** | Scaleway (Object Storage) | Hébergement des photos (Compatible S3). Payé au volume. | ~ 5 € |
-| **Paiements** | Stripe | Prélèvement d'un pourcentage par transaction. | 0 € (Frais variables) |
-| **Build App Mobile** | Expo (EAS) | Compilation de l'application et mises à jour OTA. | 0 € (Plan gratuit suffisant) |
-| **Emails Transactionnels** | Resend / Postmark | Envoi des confirmations de RDV. | ~ 15 € |
-| **Total estimé au lancement** | | | **~ 85 € / mois** |
-
-*Note : Ce coût fixe d'environ 85 €/mois est extrêmement compétitif. Si nous avions choisi des solutions "Fully Managed" chez AWS ou Google Cloud pour un niveau de redondance équivalent, la facture de départ dépasserait facilement les 300 à 400 € mensuels.*
+Cela garantit une continuité de service totale : un utilisateur peut payer son acompte ou envoyer un message au moment précis de la mise à jour sans subir aucune coupure ni page de maintenance.
