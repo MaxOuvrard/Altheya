@@ -3,28 +3,29 @@
 
 Ce document détaille les choix d'architecture, les outils et l'infrastructure nécessaires pour construire notre plateforme du prototype MVP jusqu'à la version finale destinée au grand public.
 
-## 2. Les défis de l'application
+## 1. Les défis de l'application
 
-| Le besoin métier               | Le problème technique / légal                                                                                                                               | Notre solution architecturale                                                                                                                                           |
-|:-------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Photos médicales sensibles** | Stocker des données de santé est strictement encadré par la loi (RGPD renforcé). Une fuite de données détruirait la confiance en notre plateforme.          | Base de données et fichiers hébergés sur des serveurs certifiés **HDS** (Hébergeur Données de Santé) en France. Chiffrement AES-256.                                    |
-| **Paiements et commissions**   | Encaisser un client pour le compte d'un tiers (le tatoueur) exige un agrément bancaire lourd.                                                               | Utilisation de **Stripe**. L'argent transite sur un compte : Stripe prélève notre commission et reverse le reste automatiquement au tatoueur.                           |
-| **Messagerie en temps réel**   | Rafraîchir l'application toutes les 2 secondes pour voir si un tatoueur a répondu vide la batterie du téléphone et surcharge nos serveurs.                  | Mise en place de **WebSockets** (une connexion bidirectionnelle invisible maintenue ouverte) via Laravel Reverb pour un chat instantané.                                |
-| **Boutique E-commerce**        | Vendre des soins post-tatouage demande de gérer des paniers complexes, des frais de port.                                                                   | Gestion du catalogue via notre API, mais paiement final délégué à **Stripe** pour maximiser le taux de conversion et sécuriser la carte bancaire.                       |
-| **Visualisation en AR**         | Superposer un tatouage numérique sur un corps en relief (cicatrices, courbes) demande des calculs 3D lourds qui peuvent faire ramer un téléphone classique. | Essayage 3D du tatouage sur la peau avec gestion des textures et transparences (évolutif vers ARKit/ARCore si besoin). |
+| Le besoin métier | Le problème technique / légal | Notre solution architecturale                                                                                                        |
+| :--- | :--- |:-------------------------------------------------------------------------------------------------------------------------------------|
+| **Données de santé** | Le stockage de photos médicales est strictement encadré (RGPD). Une fuite détruirait la confiance. | Base de données et fichiers hébergés sur serveurs certifiés **HDS** (France) avec chiffrement renforcé.                              |
+| **Transactions financières** | Encaisser pour le compte de tiers exige un agrément bancaire lourd et complexe. | Intégration d'un prestataire de paiement tiers certifié gérant les commissions et les reversements.                                  |
+| **Échanges instantanés** | Les mises à jour constantes épuisent la batterie et surchargent les serveurs. | Utilisation de protocoles de communication bidirectionnelle persistante pour une messagerie fluide sans latence.                     |
+| **Visibilité & Acquisition** | Une application mobile est isolée sur les stores. Le coût d'acquisition client est souvent élevé. | Écosystème web avec rendu optimisé pour le référencement naturel et les campagnes publicitaires.                                     |
+| **Boutique en ligne** | Gérer des stocks et des paniers complexes demande une interface sans aucun ralentissement. | Catalogue synchronisé en continu avec un tunnel d'achat sécurisé pour maximiser la conversion. Landing page web + Application mobile |
+| **Visualisation 3D / AR** | Superposer un tatouage sur un corps en relief demande des calculs graphiques lourds sur mobile. | Moteur de rendu graphique capable de gérer les textures de peau et l'essayage virtuel en direct.                                     |
 
-## 3. La stack technique
+## 2. La stack technique
 
-### 3.1. L'application Mobile
+### 2.1. L'application Mobile
 
-Au lieu de développer une application iPhone en Swift et une autre pour Android en langage Kotlin par exemple, nous utiliserons une base de code unique.
+Au lieu de développer une application iPhone en **Swift** et une autre pour Android en langage **Kotlin** par exemple, nous utiliserons une base de code unique.
 
 Nous utiliseront donc la stack **React Native + Expo** pour avoir une application native cross-plateform IOS/Android.
 
 #### Pourquoi Expo ?
 Dans le monde de **React Native + Expo** est devenu incontournable.
 
-Sa version moderne permet de coder en JavaScript/TypeScript tout en gardant un accès total et sans restriction au matériel du téléphone (appareil photo, géolocalisation en arrière-plan, notifications push natives).
+Sa version moderne permet de coder en **TypeScript** tout en gardant un accès total et sans restriction au matériel du téléphone (appareil photo, géolocalisation en arrière-plan, notifications push natives).
 
 #### Le super-pouvoir d'Expo (EAS Update)
 Avec Expo EAS Update, on peut pousser des corrections mineures (texte, couleur, petit bug de bouton) directement sur le téléphone des utilisateurs à la prochaine ouverture de l'app, de manière totalement invisible (sans attendre la validation Apple/Google).
@@ -34,7 +35,7 @@ Nous utiliserons TypeScript pour éviter un maximum de bugs.
 
 Nous utiliserons des outils modernes de "mise en cache" (comme *React Query*) pour que l'application s'affiche instantanément même si l'utilisateur capte mal la 4G par exemple.
 
-### 3.2. L'API Backend : Laravel (PHP 8.3)
+### 2.2. L'API Backend : Laravel (PHP 8.3)
 
 Laravel sera la base de notre application que ce soit pour l'application mobile ou la boutique en ligne disponnible sur internet de manière classique.
 
@@ -52,7 +53,31 @@ Un package officiel **Laravel** conçu spécifiquement pour dialoguer avec **Str
 #### Messagerie (Reverb)
 Un serveur **WebSocket** ultra-rapide intégré à Laravel pour la messagerie en temps réel, évitant de devoir maintenir un serveur Node.js séparé, très facilement scalable.
 
-### 3.3. Base de données et Tâches de fond
+### 2.3. Réalité Augmentée
+
+Permettre à un patient de visualiser un tatouage de reconstruction sur sa propre peau (sur une cicatrice ou une zone post-opératoire) avant de passer à l'acte est un argument de vente massif qui lève un énorme frein psychologique.
+
+Nous utiliserons techniquement de l'**AR (Réalité Augmentée)** en utilisant la caméra du smartphone de l'utilisateur.
+
+## 2.4 Présence Web - Landing page et boutique en ligne
+
+Si l’application mobile est le cœur de l’expérience, le web est notre porte d’entrée stratégique pour capter **de nouveaux utilisateurs via Google**.
+
+Pour maximiser notre visibilité, nous utilisons **Next.js** avec du **rendu côté serveur (SSR)**.
+
+Cette technologie permet de pré-générer les pages directement sur le serveur : **les robots d'indexation** reçoivent ainsi un contenu clair et structuré, ce qui garantit **un référencement naturel (SEO)** bien plus performant qu’une application web classique.
+
+**Cette vitrine web remplit trois fonctions essentielles.**
+
+Elle héberge d'abord la **Landing Page destinée à convertir les visiteurs** en utilisateurs, ainsi que la Boutique pour la vente de produits de soin.
+
+Enfin, elle **expose les Profils des Tatoueurs et leurs spécialités**.
+
+Ce socle web est aussi le pilier de notre acquisition payante : il permet de lancer des **campagnes Google Ads** beaucoup plus performantes grâce à des pages d'atterrissage optimisées.
+
+L'objectif est de capter les futurs patients lors de leurs recherches sur le web pour les convertir immédiatement en utilisateurs de l'application mobile, garantissant ainsi un flux constant de nouveaux clients.
+
+### 3. Base de données
 
 #### PostgreSQL
 C'est notre base de données principale, elle a été choisie plutôt que MySQL grâce à son extension **PostGIS**. C'est ce qui nous permettrait de faire des calculs géospatiaux mais peut être que OpenStreetMap le gère nativement. 
@@ -62,7 +87,7 @@ Base de données ultra-rapide en mémoire vive, pour le cache. On l'utilise pour
 
 C'est intégré nativement du côté de **Laravel**.
 
-### 3.4. Le stockage des médias - Object storage compatible S3
+### 4. Le stockage des médias - Object storage compatible S3
 
 Nous avons pris la décision de ne stocker **aucune** image sur les disques de nos propres serveurs applicatifs.
 
@@ -78,43 +103,18 @@ Pour les photos, le fournisseur doit obligatoirement posséder l'agrément léga
 
 À l'inverse, pour **les photos publiques** comme le les réalisations du tatoueur, la priorité c'est la vitesse d'affichage. Ces images passent donc par un **CDN (Content Delivery Network)**, un réseau de serveurs relais qui permet d'afficher les portfolios instantanément sur le téléphone du patient, **avec un temps de chargement très réduit**.
 
-
-## 7. Réalité Augmentée
-
-Permettre à un patient de visualiser un tatouage de reconstruction sur sa propre peau (sur une cicatrice ou une zone post-opératoire) avant de passer à l'acte est un argument de vente massif qui lève un énorme frein psychologique.
-
-Nous utiliserons techniquement de l'**AR (Réalité Augmentée)** en utilisant la caméra du smartphone de l'utilisateur.
-
-### Le défi technique
+#### Le défi technique
 L'AR sur le corps humain est un domaine complexe de la vision par ordinateur :
 * **La déformation et le relief :** Contrairement à un filtre visage, un sein, un ventre ou un tissu cicatriciel n'ont pas de repères fixes. L'algorithme doit comprendre la topographie pour éviter que le tatouage "flotte".
 * **Le format :** Les tatoueurs devront fournir des œuvres parfaitement détourées (fichiers PNG avec transparence gérée) pour un rendu naturel sur la peau.
 
-### L'implémentation
+#### L'implémentation
 
 Pour la **partie Réalité Augmentée**, nous utiliserons **WebXR + Three.js**. Cette combinaison permet de créer des rendus 3D fluides et de projeter le tatouage sur le corps directement dans l'interface de l'application.
 
 C'est un choix de flexibilité : l'utilisation de **Three.js** nous donne un contrôle total sur l'apparence visuelle (gestion de la transparence de l'encre, texture de la peau), tandis que **WebXR** assure la compatibilité entre iPhone et Android.
 
-## 4. Présence Web et Visibilité 
-
-Si l’application mobile est le cœur de l’expérience, le web est notre porte d’entrée stratégique pour capter **de nouveaux utilisateurs via Google**.
-
-Pour maximiser notre visibilité, nous utilisons **Next.js** avec du **rendu côté serveur (SSR)**.
-
-Cette technologie permet de pré-générer les pages directement sur le serveur : **les robots d'indexation** reçoivent ainsi un contenu clair et structuré, ce qui garantit **un référencement naturel (SEO)** bien plus performant qu’une application web classique.
-
-**Cette vitrine web remplit trois fonctions essentielles.**
-
-Elle héberge d'abord la **Landing Page destinée à convertir les visiteurs** en utilisateurs, ainsi que la Boutique pour la vente de produits de soin.
-
-Enfin, elle expose les Profils des Tatoueurs et leurs spécialités.
-
-Ce socle web est aussi le pilier de notre acquisition payante : il permet de lancer des **campagnes Google Ads** beaucoup plus performantes grâce à des pages d'atterrissage optimisées.
-
-L'objectif est de capter les futurs patients lors de leurs recherches sur le web pour les convertir immédiatement en utilisateurs de l'application mobile, garantissant ainsi un flux constant de nouveaux clients.
-
-## 4. Sécurité et Santé
+## 5. Sécurité et Santé
 
 Étant donné la nature intime et médicale des informations échangées sur notre plateforme (photos de cicatrices, historique post-opératoire), nous allons devoir être **totalement intransigeants au niveau de la sécurité pour éviter la moindre fuite de données**.
 
@@ -135,7 +135,7 @@ Ce choix stratégique nous permet de r**éduire drastiquement nos frais d'infras
 
 Par la suite, lorsque la plateforme sera **rentable** et nécessitera de passer à l'échelle, nous basculerons également ces serveurs applicatifs sur des offres HDS afin d'atteindre une **conformité juridique absolue**.
 
-## 5. Comment on héberge tout ça ?
+## 6. Comment on héberge tout ça ?
 
 Pour garantir que l'application reste rapide, résiliente et abordable au lancement, notre infrastructure repose sur une séparation stricte entre le stockage des données et le code applicatif.
 
