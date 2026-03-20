@@ -47,10 +47,10 @@ C'est un outil intégré qui traduit notre code en requêtes de base de données
 Gère les "Tokens" (jetons sécurisés) pour authentifier toutes les actions utilisateurs.
 
 #### Paiements (Cashier)
-Un package officiel Laravel conçu spécifiquement pour dialoguer avec Stripe (gestion des paiements, échecs, factures PDF). 
+Un package officiel **Laravel** conçu spécifiquement pour dialoguer avec **Stripe** (gestion des paiements, échecs, factures PDF). 
 
 #### Messagerie (Reverb)
-Un serveur WebSocket ultra-rapide intégré à Laravel pour la messagerie en temps réel, évitant de devoir maintenir un serveur Node.js séparé, très facilement scalable.
+Un serveur **WebSocket** ultra-rapide intégré à Laravel pour la messagerie en temps réel, évitant de devoir maintenir un serveur Node.js séparé, très facilement scalable.
 
 ### 3.3. Base de données et Tâches de fond
 
@@ -58,9 +58,9 @@ Un serveur WebSocket ultra-rapide intégré à Laravel pour la messagerie en tem
 C'est notre base de données principale, elle a été choisie plutôt que MySQL grâce à son extension **PostGIS**. C'est ce qui nous permettrait de faire des calculs géospatiaux mais peut être que OpenStreetMap le gère nativement. 
 
 #### Redis (Cache & Queues)
-Base de données ultra-rapide en mémoire vive. On l'utilise pour stocker les résultats fréquents et pour gérer les files d'attente (background jobs) comme l'envoi d'emails en masse sans ralentir l'application.
+Base de données ultra-rapide en mémoire vive, pour le cache. On l'utilise pour stocker les résultats fréquents et pour gérer les files d'attente (background jobs) comme l'envoi d'emails en masse sans ralentir l'application.
 
-C'est intégré nativement du côté de Laravel.
+C'est intégré nativement du côté de **Laravel**.
 
 ### 3.4. Le stockage des médias - Object storage compatible S3
 
@@ -74,9 +74,9 @@ C'est pourquoi nous déléguons cette responsabilité lourde à des hébergeurs 
 
 Pour les photos, le fournisseur doit obligatoirement posséder l'agrément légal **HDS (Hébergeur de Données de Santé)**.
 
-Le secret médical est garanti par des "URLs signées" : des liens chiffrés générés à la volée qui ne fonctionnent que quelques minutes. Une fois le délai écoulé, l'image est totalement bloquée, réduisant le risque de fuites de données.
+**Le secret médical est garanti** par des "**URLs signées**" : des liens chiffrés générés à la volée qui ne fonctionnent que quelques minutes. Une fois le délai écoulé, l'image est totalement bloquée, réduisant le risque de fuites de données.
 
-À l'inverse, pour les photos publiques comme le les réalisations du tatoueur, la priorité c'est la vitesse d'affichage. Ces images passent donc par un **CDN (Content Delivery Network)**, un réseau de serveurs relais qui permet d'afficher les portfolios instantanément sur le téléphone du patient, avec un temps de chargement très réduit.
+À l'inverse, pour **les photos publiques** comme le les réalisations du tatoueur, la priorité c'est la vitesse d'affichage. Ces images passent donc par un **CDN (Content Delivery Network)**, un réseau de serveurs relais qui permet d'afficher les portfolios instantanément sur le téléphone du patient, **avec un temps de chargement très réduit**.
 
 
 ## 7. Réalité Augmentée
@@ -92,10 +92,27 @@ L'AR sur le corps humain est un domaine complexe de la vision par ordinateur :
 
 ### L'implémentation
 
-Pour la partie Réalité Augmentée, nous utiliserons **WebXR + Three.js**. Cette combinaison permet de créer des rendus 3D fluides et de projeter le tatouage sur le corps directement dans l'interface de l'application.
+Pour la **partie Réalité Augmentée**, nous utiliserons **WebXR + Three.js**. Cette combinaison permet de créer des rendus 3D fluides et de projeter le tatouage sur le corps directement dans l'interface de l'application.
 
 C'est un choix de flexibilité : l'utilisation de **Three.js** nous donne un contrôle total sur l'apparence visuelle (gestion de la transparence de l'encre, texture de la peau), tandis que **WebXR** assure la compatibilité entre iPhone et Android.
 
+## 4. Présence Web et Visibilité 
+
+Si l’application mobile est le cœur de l’expérience, le web est notre porte d’entrée stratégique pour capter **de nouveaux utilisateurs via Google**.
+
+Pour maximiser notre visibilité, nous utilisons **Next.js** avec du **rendu côté serveur (SSR)**.
+
+Cette technologie permet de pré-générer les pages directement sur le serveur : **les robots d'indexation** reçoivent ainsi un contenu clair et structuré, ce qui garantit **un référencement naturel (SEO)** bien plus performant qu’une application web classique.
+
+**Cette vitrine web remplit trois fonctions essentielles.**
+
+Elle héberge d'abord la **Landing Page destinée à convertir les visiteurs** en utilisateurs, ainsi que la Boutique pour la vente de produits de soin.
+
+Enfin, elle expose les Profils des Tatoueurs et leurs spécialités.
+
+Ce socle web est aussi le pilier de notre acquisition payante : il permet de lancer des **campagnes Google Ads** beaucoup plus performantes grâce à des pages d'atterrissage optimisées.
+
+L'objectif est de capter les futurs patients lors de leurs recherches sur le web pour les convertir immédiatement en utilisateurs de l'application mobile, garantissant ainsi un flux constant de nouveaux clients.
 
 ## 4. Sécurité et Santé
 
