@@ -1,0 +1,479 @@
+Index: Conception/DAT.md
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+># Document d'Architecture Technique (DAT)\n## Application Tatouage Thérapeutique — Comparaison & Choix Technologiques\n\n**Version :** 4.0  \n**Date :** 27 février 2026  \n**Auteurs :** MaxOuvrard, Cyrien, Dylan Bathig  \n**Statut :** Draft — En discussion  \n\n---\n\n## Table des matières\n\n1. [Contexte & Contraintes](#1-contexte--contraintes)\n2. [Hypothèses de charge](#2-hypothèses-de-charge)\n3. [Framework Mobile](#3-framework-mobile)\n4. [Framework Web (version restreinte)](#4-framework-web-version-restreinte)\n5. [Backend & API](#5-backend--api)\n6. [Base de données](#6-base-de-données)\n7. [Paiements](#7-paiements)\n8. [Stockage des médias & Protection des photos](#8-stockage-des-médias--protection-des-photos)\n9. [Messagerie temps réel](#9-messagerie-temps-réel)\n10. [Maps & Géolocalisation](#10-maps--géolocalisation)\n11. [Authentification](#11-authentification)\n12. [Hébergement & Déploiement](#12-hébergement--déploiement)\n13. [Synthèse des choix retenus](#13-synthèse-des-choix-retenus)\n\n---\n\n## 1. Contexte & Contraintes\n\n### 1.1 Produits à livrer\n\n| Produit | Description |\n|---|---|\n| **App mobile** | Application iOS + Android pour patients et tatoueurs |\n| **Web restreint** | Landing page + Shop (version web allégée) |\n\n### 1.2 Contraintes identifiées\n\n| Contrainte | Détail |\n|---|---|\n| \uD83D\uDCCD Marché | France uniquement (pour l'instant) |\n| \uD83D\uDC65 Utilisateurs tatoueurs | ~800 tatoueurs visés |\n| \uD83D\uDC65 Utilisateurs clients | Inconnu — à estimer (cf. section 2) |\n| \uD83D\uDCB0 Budget | Startup early-stage — coûts d'infrastructure à minimiser |\n| \uD83D\uDC68\u200D\uD83D\uDCBB Équipe | Petite équipe dev — productivité prioritaire |\n| ⚖\uFE0F Légal | Données de santé (RGPD Art. 9) — consentement renforcé |\n| \uD83D\uDCF8 Médias | Protection photos tatoueurs (anti-copie, DRM léger) |\n| \uD83D\uDCB3 Paiements | Acomptes, paiements finaux, abonnements tatoueurs |\n\n### 1.3 Fonctionnalités structurantes pour le choix techno\n\nCes fonctionnalités ont un impact direct sur les choix d'architecture :\n- **Réalité augmentée** → contrainte mobile forte\n- **Messagerie temps réel** → WebSocket / infra temps réel\n- **Maps + géolocalisation** → coûts selon provider\n- **Paiements complexes** (acompte, solde, abonnement, marketplace)\n- **Protection DRM légère** sur les photos\n- **Mode FYP** → scroll infini, performances médias\n\n---\n\n## 2. Hypothèses de charge\n\n> ⚠\uFE0F Les données clients sont inconnues. On raisonne par scénarios pour dimensionner.\n\n### 2.1 Scénarios utilisateurs\n\n| Scénario | Tatoueurs | Clients | Contexte |\n|---|---|---|---|\n| **Lancement (M0–M6)** | 100–300 | 500–2 000 | Déploiement progressif France |\n| **Croissance (M6–M18)** | 800 | 5 000–20 000 | Plein régime France |\n| **Scale (M18+)** | 800+ | 20 000–100 000 | Expansion envisageable |\n\n### 2.2 Implications pour les choix techniques\n\n- **Charge faible au démarrage** → inutile de sur-architecturer\n- **Pics probables** : tatoueurs actifs en soirée/week-end → auto-scaling simple\n- **Médias dominants** : photos haute résolution → CDN obligatoire\n- **Temps réel limité** : messagerie 1-to-1 uniquement (pas de chat de groupe massif)\n- **Laravel + Octane** est largement dimensionné pour ces volumes\n\n---\n\n## 3. Framework Mobile\n\n### 3.1 Options comparées\n\n| Critère | React Native (Expo) | Flutter | Swift/Kotlin Natif |\n|---|---|---|---|\n| **Plateformes** | iOS + Android ✅ | iOS + Android ✅ | Une seule par défaut ❌ |\n| **Langage** | TypeScript ✅ | Dart (à apprendre) ⚠\uFE0F | Swift / Kotlin ✅ |\n| **Performance** | Bonne ⚠\uFE0F | Excellente ✅ | Excellente ✅ |\n| **Réalité augmentée** | Vision Camera + ML Kit ⚠\uFE0F | Limité, plugins tiers ⚠\uFE0F | ARKit/ARCore natif ✅ |\n| **Écosystème** | Très large (npm) ✅ | Croissant ⚠\uFE0F | Mature mais séparé ⚠\uFE0F |\n| **Time-to-market** | Rapide ✅ | Moyen ⚠\uFE0F | Lent (2 codebases) ❌ |\n| **Dev mobile dédié requis** | Non (fullstack JS) ✅ | Oui (Dart) ⚠\uFE0F | Oui (x2) ❌ |\n| **Coût équipe** | Faible ✅ | Moyen ⚠\uFE0F | Élevé ❌ |\n\n### 3.2 Cas particulier : Réalité Augmentée\n\n| Option AR | Techno | Qualité | Complexité | Verdict |\n|---|---|---|---|---|\n| **React Native Vision Camera + ML Kit** | RN | Bonne | Moyenne | ✅ Suffisant V1 |\n| **ViroReact** | RN | Moyenne | Faible | ⚠\uFE0F Simple mais limité |\n| **ARKit / ARCore natif** | Swift/Kotlin | Excellente | Élevée | ❌ Surcoût non justifié V1 |\n| **WebAR (8th Wall)** | Web in-app | Moyenne | Faible | ⚠\uFE0F En backup si RN insuffisant |\n\n> **Décision** : L'AR en V1 peut être implémentée avec React Native Vision Camera. Migration partielle vers du natif envisageable en V2 si l'AR devient un pilier marketing fort.\n\n### 3.3 ✅ Choix retenu : **React Native + Expo SDK 52**\n\n---\n\n## 4. Framework Web (version restreinte)\n\n> Périmètre : Landing Page + Shop uniquement\n\n### 4.1 Options comparées\n\n| Critère | Next.js | Remix | Astro | Webflow (no-code) |\n|---|---|---|---|---|\n| **SEO** | Excellent (SSG/SSR) ✅ | Excellent ✅ | Excellent ✅ | Bon ⚠\uFE0F |\n| **E-commerce / Shop** | Natif avec libs ✅ | Possible ⚠\uFE0F | Limité ❌ | Via intégrations ⚠\uFE0F |\n| **Performance** | Très bonne ✅ | Très bonne ✅ | Excellente ✅ | Bonne ⚠\uFE0F |\n| **Évolutivité vers app complète** | Excellente ✅ | Bonne ✅ | Limitée ⚠\uFE0F | Nulle ❌ |\n| **Déploiement simple** | Vercel ✅ | Fly.io / Vercel ✅ | Vercel / Netlify ✅ | Hébergé ✅ |\n| **Time-to-market** | Rapide ✅ | Rapide ✅ | Très rapide ✅ | Très rapide ✅ |\n\n### 4.2 ✅ Choix retenu : **Next.js 15 + Vercel**\n\n- Mix Landing SSG + Shop SSR parfaitement géré\n- Déploiement zéro config sur Vercel\n- Évolutif si le web grandit (dashboard tatoueur, espace client)\n\n---\n\n## 5. Backend & API\n\n### 5.1 Architecture : Monolithe modulaire vs Microservices\n\n| Critère | Monolithe modulaire | Microservices |\n|---|---|---|\n| **Complexité initiale** | Faible ✅ | Élevée ❌ |\n| **Coût infra** | Faible ✅ | Élevé ❌ |\n| **Pertinent à 800 tatoueurs** | Oui ✅ | Non, sur-dimensionné ❌ |\n| **Évolutivité vers microservices** | Migration possible ✅ | N/A |\n| **Débogage** | Simple ✅ | Complexe ❌ |\n| **Temps de dev** | Rapide ✅ | Lent ❌ |\n\n> **Décision** : **Monolithe modulaire** en phase 1. Les domaines (auth, booking, shop, messagerie) sont des modules Laravel séparés mais dans une seule application. Migration microservices si la charge dépasse 50k utilisateurs actifs.\n\n### 5.2 Options Framework Backend\n\n| Critère | **Laravel 11** | NestJS | Express.js | Symfony |\n|---|---|---|---|---|\n| **Langage** | PHP 8.3 ✅ | TypeScript ✅ | JS/TS ⚠\uFE0F | PHP 8.3 ✅ |\n| **Architecture** | MVC modulaire, opinionated ✅ | Modulaire, Angular-like ✅ | Libre ⚠\uFE0F | Très structuré ⚠\uFE0F |\n| **ORM intégré** | Eloquent (natif, excellent) ✅ | Prisma/TypeORM ⚠\uFE0F | Manuel ❌ | Doctrine ⚠\uFE0F |\n| **Auth native** | Sanctum / Passport ✅ | Libs tierces ⚠\uFE0F | Libs tierces ❌ | Libs tierces ⚠\uFE0F |\n| **WebSocket** | Laravel Reverb (officiel 2024) ✅ | Socket.io natif ✅ | Socket.io ⚠\uFE0F | Mercure ⚠\uFE0F |\n| **Queue / Jobs async** | Horizon + Redis (natif) ✅ | BullMQ ⚠\uFE0F | Manuel ❌ | Messenger ⚠\uFE0F |\n| **Paiements Stripe** | Laravel Cashier (natif) ✅ | SDK JS ⚠\uFE0F | SDK JS ⚠\uFE0F | SDK PHP ⚠\uFE0F |\n| **Time-to-market** | Très rapide ✅ | Rapide ✅ | Moyen ⚠\uFE0F | Lent ❌ |\n| **Documentation** | Excellente ✅ | Très bonne ✅ | Bonne ✅ | Bonne ✅ |\n| **Performance (Octane)** | Très bonne ✅ | Excellente ✅ | Bonne ⚠\uFE0F | Bonne ⚠\uFE0F |\n| **Courbe d'apprentissage** | Faible ✅ | Moyenne ⚠\uFE0F | Faible ✅ | Élevée ❌ |\n\n### 5.3 Écosystème Laravel first-party\n\nL'un des avantages majeurs de Laravel est son écosystème first-party qui couvre la quasi-totalité des besoins sans librairie tierce :\n\n| Besoin | Package Laravel natif | Alternative NestJS |\n|---|---|---|\n| Auth API (tokens) | **Sanctum** | Passport.js + config manuelle |\n| OAuth social (Google, Apple) | **Socialite** | Config OAuth2 manuelle |\n| Abonnements Stripe | **Cashier** | Stripe SDK + code custom |\n| Queues & jobs async | **Horizon** (dashboard inclus) | BullMQ + config |\n| WebSocket serveur | **Reverb** | Socket.io |\n| Notifications (push, email, SMS) | **Notifications** (natif) | Libs tierces |\n| Performance (keep-alive) | **Octane** (Swoole/RoadRunner) | Fastify adapter |\n| Monitoring queues | **Telescope** + **Horizon** | Datadog custom |\n| Tests | **Pest PHP** | Jest |\n| Scheduled tasks (CRON) | **Task Scheduling** natif | node-cron |\n\n### 5.4 ✅ Choix retenu : **Laravel 11 + Octane (Swoole)**\n\n---\n\n## 6. Base de données\n\n### 6.1 Besoins spécifiques\n\n- **Géospatial** : recherche de tatoueurs par distance → PostGIS\n- **Relations complexes** : users ↔ artists ↔ bookings ↔ reviews ↔ messages\n- **Données sensibles** : pathologies (chiffrement au repos)\n- **Charge** : faible à modérée (France, <100k users en phase 1)\n\n### 6.2 Comparaison base principale\n\n| Critère | PostgreSQL | MySQL | MongoDB | Supabase (PG managé) |\n|---|---|---|---|---|\n| **Géospatial (PostGIS)** | Excellent ✅ | Basique ⚠\uFE0F | Bon (GeoJSON) ✅ | Excellent ✅ |\n| **Relations complexes** | Excellent ✅ | Bon ✅ | Inadapté ❌ | Excellent ✅ |\n| **JSON / flexibilité** | JSONB natif ✅ | Limité ⚠\uFE0F | Natif ✅ | JSONB natif ✅ |\n| **Eloquent (Laravel)** | ✅ | ✅ | Via lib tierce ⚠\uFE0F | ✅ |\n| **Chiffrement données sensibles** | pgcrypto ✅ | Oui ✅ | Oui ✅ | pgcrypto ✅ |\n| **Coût early-stage** | Selon hébergement ⚠\uFE0F | Selon hébergement ⚠\uFE0F | Atlas limité ⚠\uFE0F | Gratuit 500MB ✅ |\n| **Migrations Laravel** | ✅ | ✅ | Partiel ⚠\uFE0F | ✅ |\n\n### 6.3 Cache / Sessions\n\n| Besoin | Redis (self-hosted) | Upstash (Redis serverless) |\n|---|---|---|\n| **Sessions Laravel** | ✅ | ✅ |\n| **Cache API** | ✅ | ✅ |\n| **Queues Laravel Horizon** | ✅ (requis) | ✅ |\n| **WebSocket Reverb (pub/sub)** | ✅ | ✅ |\n| **Coût early-stage** | ~$15/mois ⚠\uFE0F | Pay-per-use ✅ |\n| **Gestion infra** | À héberger ⚠\uFE0F | Managé ✅ |\n\n### 6.4 ✅ Choix retenu\n\n| Composant | Choix | Justification |\n|---|---|---|\n| **Base principale** | **Supabase** (PostgreSQL + PostGIS) | Managé, géospatial, région EU, RGPD |\n| **Cache / Sessions / Queues** | **Upstash Redis** | Serverless, compatible Horizon, pay-per-use |\n| **ORM** | **Eloquent** (natif Laravel) | Natif, migrations, relations, très productif |\n\n> **Note** : Supabase est PostgreSQL pur. Laravel s'y connecte exactement comme à un PostgreSQL classique. Zéro friction avec Eloquent.\n\n---\n\n## 7. Paiements\n\n### 7.1 Besoins\n\n- Acompte (% du devis) à la réservation\n- Paiement du solde après RDV\n- Abonnement mensuel tatoueur (SaaS)\n- Paiement de la certification\n- Boutique (paiement one-shot produits)\n- Marketplace potentielle (encaissement + reversement tatoueur)\n\n### 7.2 Comparaison\n\n| Critère | **Stripe** | Mollie | PayPlug | Sumeria |\n|---|---|---|---|---|\n| **Acomptes** | ✅ Payment Intents | ✅ | Partiel ⚠\uFE0F | ❌ |\n| **Abonnements** | ✅ Billing | ✅ | ❌ | ❌ |\n| **Marketplace** | ✅ Connect | ⚠\uFE0F | ❌ | ❌ |\n| **Laravel Cashier** | ✅ natif | ❌ | ❌ | ❌ |\n| **Apple/Google Pay** | ✅ | ✅ | ⚠\uFE0F | ❌ |\n| **SDK React Native** | ✅ officiel | ⚠\uFE0F | ❌ | ❌ |\n| **Conformité DSP2/RGPD** | ✅ | ✅ | ✅ | ✅ |\n| **Frais EU** | 1.5% + 0.25€ | 1.2% + 0.25€ | 1.2% + 0.25€ | Variable |\n| **Dashboard** | Excellent ✅ | Bon ✅ | Moyen ⚠\uFE0F | Basique ❌ |\n\n### 7.3 ✅ Choix retenu : **Stripe + Laravel Cashier**\n\n- **Laravel Cashier** gère nativement les abonnements, factures et trials → zéro code custom\n- Stripe Connect pour le modèle marketplace (reversement automatique aux tatoueurs)\n- SDK React Native officiel pour le paiement in-app\n- Seul provider couvrant l'ensemble des besoins\n\n---\n\n## 8. Stockage des médias & Protection des photos\n\n### 8.1 Besoins\n\n- Upload photos de réalisations (tatoueurs)\n- Optimisation automatique (compression, WebP)\n- Protection anti-téléchargement (URLs signées, expiration)\n- Watermarking automatique\n- Transformation à la volée (thumbnails, galerie, AR)\n- Coût maîtrisé en early stage\n\n### 8.2 Comparaison\n\n| Critère | **Cloudinary** | AWS S3 + CloudFront | Uploadcare | Bunny.net |\n|---|---|---|---|---|\n| **Transformation images** | Natif, puissant ✅ | Via Lambda@Edge ⚠\uFE0F | Bon ✅ | Basique ⚠\uFE0F |\n| **Watermarking auto** | Natif ✅ | Manuel (Lambda) ⚠\uFE0F | Natif ✅ | Non ❌ |\n| **URLs signées** | ✅ | ✅ | ✅ | ✅ |\n| **CDN intégré** | ✅ | ✅ | ✅ | ✅ excellent |\n| **SDK Laravel** | ✅ | ✅ (Flysystem) | ✅ | ⚠\uFE0F |\n| **Coût early-stage** | Gratuit 25GB ✅ | Pay-per-use ✅ | Gratuit 10GB ⚠\uFE0F | Très faible ✅ |\n| **Complexité setup** | Faible ✅ | Élevée ⚠\uFE0F | Faible ✅ | Moyenne ⚠\uFE0F |\n\n### 8.3 ✅ Choix retenu : **Cloudinary**\n\n- Watermarking et protection des photos sans développement custom\n- Transformations à la volée (crucial pour les vues galerie, FYP, AR)\n- Free tier généreux pour la phase de démarrage\n- URLs signées avec expiration pour le DRM léger\n\n---\n\n## 9. Messagerie temps réel\n\n### 9.1 Besoins\n\n- Messagerie 1-to-1 (patient ↔ tatoueur)\n- Données potentiellement médicales → conformité RGPD impérative\n- Pièces jointes (photos)\n- Indicateur \"lu / non lu\"\n- Notifications push sur nouveau message\n- Volume faible (~800 tatoueurs, conversations ponctuelles)\n\n### 9.2 Comparaison\n\n| Critère | **Laravel Reverb** | Supabase Realtime | Stream Chat | Firebase RTDB |\n|---|---|---|---|---|\n| **Intégration Laravel** | Natif (first-party) ✅ | Via client JS ⚠\uFE0F | SDK PHP ✅ | SDK PHP ⚠\uFE0F |\n| **Laravel Broadcasting** | ✅ natif | ⚠\uFE0F adapter custom | ❌ | ⚠\uFE0F |\n| **Contrôle total données** | ✅ self-hosted | ✅ | ❌ SaaS tiers | ❌ Google |\n| **Conformité RGPD EU** | ✅ | ✅ région EU | ⚠\uFE0F US par défaut | ❌ Google US |\n| **Coût** | Infra incluse ✅ | Inclus Supabase ✅ | Gratuit <100 MAU ⚠\uFE0F | Gratuit limité ⚠\uFE0F |\n| **Temps de dev** | Court (Broadcasting natif) ✅ | Moyen ⚠\uFE0F | Très court ✅ | Court ✅ |\n| **SDK React Native** | Via Echo client ✅ | ✅ | ✅ | ✅ |\n| **Scalabilité** | Bonne (Redis pub/sub) ✅ | Limitée ⚠\uFE0F | Excellente ✅ | Bonne ✅ |\n\n> ⚠\uFE0F **Point critique RGPD** : les échanges peuvent contenir des informations médicales (photos de pathologies, descriptions). Héberger la messagerie chez un tiers américain (Firebase, Stream) est risqué sans DPA solide et transferts encadrés.\n\n### 9.3 ✅ Choix retenu : **Laravel Reverb**\n\n- Package officiel Laravel (sorti 2024), intégration zéro-friction avec Broadcasting\n- Self-hosted → données restent sur notre infrastructure EU\n- S'appuie sur Upstash Redis pour le pub/sub en multi-process\n- Laravel Echo client disponible pour React Native\n\n---\n\n## 10. Maps & Géolocalisation\n\n### 10.1 Besoins\n\n- Affichage tatoueurs sur carte\n- Recherche par rayon autour de l'utilisateur\n- Filtres dynamiques (spécialité, certification, distance)\n- Clustering de marqueurs\n- Usage France uniquement\n\n### 10.2 Comparaison\n\n| Critère | **Mapbox** | Google Maps | Leaflet + OSM | Apple Maps |\n|---|---|---|---|---|\n| **Qualité carto France** | Excellente ✅ | Excellente ✅ | Bonne ✅ | Bonne ✅ |\n| **SDK React Native** | ✅ | ✅ | ⚠\uFE0F wrapper communautaire | iOS uniquement ❌ |\n| **SDK Web (Next.js)** | ✅ | ✅ | ✅ | ⚠\uFE0F |\n| **Clustering natif** | ✅ | ✅ | Via plugins ⚠\uFE0F | ⚠\uFE0F |\n| **Personnalisation** | Excellente ✅ | Limitée ⚠\uFE0F | Bonne ✅ | Limitée ⚠\uFE0F |\n| **Coût early-stage** | 50k chargements/mois gratuits ✅ | $200 crédit/mois ✅ | Gratuit ✅ | Gratuit ✅ |\n| **Coût à l'échelle** | ~$0.5/1000 tiles ⚠\uFE0F | Peut devenir cher ❌ | Gratuit ✅ | Gratuit ✅ |\n| **RGPD / endpoint EU** | ✅ option EU | ⚠\uFE0F transferts US | ✅ | ✅ |\n\n### 10.3 ✅ Choix retenu : **Mapbox**\n\n- Meilleure personnalisation visuelle (identité de l'app)\n- SDK unifié RN + Web\n- Free tier suffisant pour le démarrage en France\n- Endpoint EU disponible pour conformité RGPD\n\n---\n\n## 11. Authentification\n\n### 11.1 Besoins\n\n- Email / mot de passe\n- OAuth Google + Apple (obligatoire App Store)\n- Gestion des rôles (client, tatoueur, admin)\n- Sessions sécurisées pour l'API mobile\n- Onboarding post-inscription\n\n### 11.2 Comparaison\n\n| Critère | **Sanctum + Socialite** | Supabase Auth | Clerk | Firebase Auth |\n|---|---|---|---|---|\n| **OAuth Google / Apple** | ✅ via Socialite | ✅ natif | ✅ natif | ✅ natif |\n| **Auth API mobile (tokens)** | ✅ Sanctum natif | ✅ | ✅ | ✅ |\n| **Gestion des rôles** | ✅ Gates / Policies | Via JWT custom ✅ | ✅ | Via Custom Claims ⚠\uFE0F |\n| **Contrôle total** | ✅ self-hosted | ✅ | ⚠\uFE0F SaaS | ⚠\uFE0F Google |\n| **RGPD / données EU** | ✅ self-hosted | ✅ région EU | ⚠\uFE0F US par défaut | ❌ Google US |\n| **Coût** | Inclus Laravel ✅ | Inclus Supabase ✅ | Gratuit <10k MAU ✅ | Gratuit ✅ |\n| **Temps de dev** | Court ✅ | Court ✅ | Très court ✅ | Court ✅ |\n| **MFA** | Via lib tierce ⚠��� | ✅ natif | ✅ natif | ✅ natif |\n\n### 11.3 ✅ Choix retenu : **Laravel Sanctum + Socialite**\n\n- Sanctum : auth API par tokens pour React Native\n- Socialite : Google + Apple Sign-In natif Laravel\n- Gates & Policies : gestion fine des rôles (client, tatoueur, admin)\n- Données d'auth sur notre propre infra EU\n\n---\n\n## 12. Hébergement & Déploiement\n\n### 12.1 Web (Next.js)\n\n| Option | Coût early-stage | Simplicité | Performance France |\n|---|---|---|---|\n| **Vercel** | Gratuit → $20/mois ✅ | Très simple ✅ | CDN Europe ✅ |\n| Netlify | Gratuit → $19/mois ✅ | Simple ✅ | CDN Europe ✅ |\n| AWS Amplify | Pay-per-use ✅ | Moyen ⚠\uFE0F | ✅ |\n\n**✅ Retenu : Vercel** — Zero config, preview deployments sur chaque PR.\n\n### 12.2 Backend Laravel\n\n| Option | Coût early-stage | Simplicité | Laravel-ready |\n|---|---|---|---|\n| **Railway** | $5–20/mois ✅ | Très simple ✅ | ✅ Docker |\n| Render | $7+/mois ✅ | Simple ✅ | ✅ Docker |\n| Fly.io | ~$10/mois ✅ | Simple ✅ | ✅ Docker |\n| Forge + VPS (Hetzner/Scaleway) | ~$20/mois ✅ | Laravel natif ✅ | ✅ optimisé |\n| AWS ECS | $50+/mois ❌ | Complexe ❌ | ✅ |\n\n**✅ Retenu : Railway** pour le démarrage  \n**Alternative** : **Laravel Forge + Hetzner** (VPS Frankfurt) si besoin de contrôle total et hébergement 100% EU.\n\n### 12.3 Coût estimé mensuel (phase démarrage)\n\n| Service | Plan | Coût/mois |\n|---|---|---|\n| Vercel | Pro | ~$20 |\n| Railway (Laravel) | Starter | ~$10–20 |\n| Supabase | Pro | ~$25 |\n| Upstash Redis | Pay-per-use | ~$5 |\n| Cloudinary | Free tier | $0 |\n| Mapbox | Free tier | $0 |\n| Stripe | % transactions | $0 fixe |\n| **Total estimé** | | **~$60–70/mois** |\n\n---\n\n## 13. Synthèse des choix retenus\n\n| Couche | Technologie retenue | Alternative écartée | Raison principale |\n|---|---|---|---|\n| **App mobile** | React Native + Expo | Flutter, Natif | Time-to-market, écosystème |\n| **AR** | RN Vision Camera | ARKit/ARCore natif | Suffisant V1, coût dev |\n| **Web** | Next.js 15 + Vercel | Astro, Webflow | Évolutivité, shop dynamique |\n| **Backend** | Laravel 11 + Octane | NestJS, Symfony | Productivité, écosystème natif |\n| **Architecture** | Monolithe modulaire | Microservices | Charge faible, petite équipe |\n| **WebSocket** | Laravel Reverb | Socket.io, Stream Chat | First-party, self-hosted, RGPD |\n| **Auth** | Sanctum + Socialite | Clerk, Firebase | Natif Laravel, self-hosted EU |\n| **Paiements** | Stripe + Cashier | Mollie, PayPlug | Cashier natif, couverture complète |\n| **Base de données** | Supabase (PostgreSQL) | MySQL, MongoDB | Géospatial, RGPD EU, managé |\n| **ORM** | Eloquent | Prisma, TypeORM | Natif Laravel, très productif |\n| **Cache / Queues** | Upstash Redis | ElastiCache | Serverless, pay-per-use |\n| **Médias** | Cloudinary | S3 + Lambda | Watermark et DRM sans code custom |\n| **Maps** | Mapbox | Google Maps | Personnalisation, endpoint EU |\n| **Hébergement web** | Vercel | Netlify | Intégration Next.js native |\n| **Hébergement API** | Railway | AWS ECS | Simplicité, coût early-stage |\n\n### Principe directeur\n\n> **\"Maximiser la vélocité de développement grâce à l'écosystème Laravel first-party, minimiser les coûts d'infrastructure, sans créer de dette technique bloquante pour la scale-up.\"**\n\nLaravel couvre nativement (Cashier, Reverb, Sanctum, Socialite, Horizon, Octane) la quasi-totalité des besoins sans librairie tierce. La stack mobile et web reste en TypeScript (React Native + Next.js), les deux couches communiquant avec le backend Laravel via une API REST + WebSocket standard.\n\n---\n\n*Document soumis à validation. Toute modification doit être discutée en équipe et versionnée.*
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/Conception/DAT.md b/Conception/DAT.md
+--- a/Conception/DAT.md	(revision 719718038d3be8e53638f3b32836462e0d5c8651)
++++ b/Conception/DAT.md	(date 1773909285799)
+@@ -1,467 +1,0 @@
+-# Document d'Architecture Technique (DAT)
+-## Application Tatouage Thérapeutique — Comparaison & Choix Technologiques
+-
+-**Version :** 4.0  
+-**Date :** 27 février 2026  
+-**Auteurs :** MaxOuvrard, Cyrien, Dylan Bathig  
+-**Statut :** Draft — En discussion  
+-
+----
+-
+-## Table des matières
+-
+-1. [Contexte & Contraintes](#1-contexte--contraintes)
+-2. [Hypothèses de charge](#2-hypothèses-de-charge)
+-3. [Framework Mobile](#3-framework-mobile)
+-4. [Framework Web (version restreinte)](#4-framework-web-version-restreinte)
+-5. [Backend & API](#5-backend--api)
+-6. [Base de données](#6-base-de-données)
+-7. [Paiements](#7-paiements)
+-8. [Stockage des médias & Protection des photos](#8-stockage-des-médias--protection-des-photos)
+-9. [Messagerie temps réel](#9-messagerie-temps-réel)
+-10. [Maps & Géolocalisation](#10-maps--géolocalisation)
+-11. [Authentification](#11-authentification)
+-12. [Hébergement & Déploiement](#12-hébergement--déploiement)
+-13. [Synthèse des choix retenus](#13-synthèse-des-choix-retenus)
+-
+----
+-
+-## 1. Contexte & Contraintes
+-
+-### 1.1 Produits à livrer
+-
+-| Produit | Description |
+-|---|---|
+-| **App mobile** | Application iOS + Android pour patients et tatoueurs |
+-| **Web restreint** | Landing page + Shop (version web allégée) |
+-
+-### 1.2 Contraintes identifiées
+-
+-| Contrainte | Détail |
+-|---|---|
+-| 📍 Marché | France uniquement (pour l'instant) |
+-| 👥 Utilisateurs tatoueurs | ~800 tatoueurs visés |
+-| 👥 Utilisateurs clients | Inconnu — à estimer (cf. section 2) |
+-| 💰 Budget | Startup early-stage — coûts d'infrastructure à minimiser |
+-| 👨‍💻 Équipe | Petite équipe dev — productivité prioritaire |
+-| ⚖️ Légal | Données de santé (RGPD Art. 9) — consentement renforcé |
+-| 📸 Médias | Protection photos tatoueurs (anti-copie, DRM léger) |
+-| 💳 Paiements | Acomptes, paiements finaux, abonnements tatoueurs |
+-
+-### 1.3 Fonctionnalités structurantes pour le choix techno
+-
+-Ces fonctionnalités ont un impact direct sur les choix d'architecture :
+-- **Réalité augmentée** → contrainte mobile forte
+-- **Messagerie temps réel** → WebSocket / infra temps réel
+-- **Maps + géolocalisation** → coûts selon provider
+-- **Paiements complexes** (acompte, solde, abonnement, marketplace)
+-- **Protection DRM légère** sur les photos
+-- **Mode FYP** → scroll infini, performances médias
+-
+----
+-
+-## 2. Hypothèses de charge
+-
+-> ⚠️ Les données clients sont inconnues. On raisonne par scénarios pour dimensionner.
+-
+-### 2.1 Scénarios utilisateurs
+-
+-| Scénario | Tatoueurs | Clients | Contexte |
+-|---|---|---|---|
+-| **Lancement (M0–M6)** | 100–300 | 500–2 000 | Déploiement progressif France |
+-| **Croissance (M6–M18)** | 800 | 5 000–20 000 | Plein régime France |
+-| **Scale (M18+)** | 800+ | 20 000–100 000 | Expansion envisageable |
+-
+-### 2.2 Implications pour les choix techniques
+-
+-- **Charge faible au démarrage** → inutile de sur-architecturer
+-- **Pics probables** : tatoueurs actifs en soirée/week-end → auto-scaling simple
+-- **Médias dominants** : photos haute résolution → CDN obligatoire
+-- **Temps réel limité** : messagerie 1-to-1 uniquement (pas de chat de groupe massif)
+-- **Laravel + Octane** est largement dimensionné pour ces volumes
+-
+----
+-
+-## 3. Framework Mobile
+-
+-### 3.1 Options comparées
+-
+-| Critère | React Native (Expo) | Flutter | Swift/Kotlin Natif |
+-|---|---|---|---|
+-| **Plateformes** | iOS + Android ✅ | iOS + Android ✅ | Une seule par défaut ❌ |
+-| **Langage** | TypeScript ✅ | Dart (à apprendre) ⚠️ | Swift / Kotlin ✅ |
+-| **Performance** | Bonne ⚠️ | Excellente ✅ | Excellente ✅ |
+-| **Réalité augmentée** | Vision Camera + ML Kit ⚠️ | Limité, plugins tiers ⚠️ | ARKit/ARCore natif ✅ |
+-| **Écosystème** | Très large (npm) ✅ | Croissant ⚠️ | Mature mais séparé ⚠️ |
+-| **Time-to-market** | Rapide ✅ | Moyen ⚠️ | Lent (2 codebases) ❌ |
+-| **Dev mobile dédié requis** | Non (fullstack JS) ✅ | Oui (Dart) ⚠️ | Oui (x2) ❌ |
+-| **Coût équipe** | Faible ✅ | Moyen ⚠️ | Élevé ❌ |
+-
+-### 3.2 Cas particulier : Réalité Augmentée
+-
+-| Option AR | Techno | Qualité | Complexité | Verdict |
+-|---|---|---|---|---|
+-| **React Native Vision Camera + ML Kit** | RN | Bonne | Moyenne | ✅ Suffisant V1 |
+-| **ViroReact** | RN | Moyenne | Faible | ⚠️ Simple mais limité |
+-| **ARKit / ARCore natif** | Swift/Kotlin | Excellente | Élevée | ❌ Surcoût non justifié V1 |
+-| **WebAR (8th Wall)** | Web in-app | Moyenne | Faible | ⚠️ En backup si RN insuffisant |
+-
+-> **Décision** : L'AR en V1 peut être implémentée avec React Native Vision Camera. Migration partielle vers du natif envisageable en V2 si l'AR devient un pilier marketing fort.
+-
+-### 3.3 ✅ Choix retenu : **React Native + Expo SDK 52**
+-
+----
+-
+-## 4. Framework Web (version restreinte)
+-
+-> Périmètre : Landing Page + Shop uniquement
+-
+-### 4.1 Options comparées
+-
+-| Critère | Next.js | Remix | Astro | Webflow (no-code) |
+-|---|---|---|---|---|
+-| **SEO** | Excellent (SSG/SSR) ✅ | Excellent ✅ | Excellent ✅ | Bon ⚠️ |
+-| **E-commerce / Shop** | Natif avec libs ✅ | Possible ⚠️ | Limité ❌ | Via intégrations ⚠️ |
+-| **Performance** | Très bonne ✅ | Très bonne ✅ | Excellente ✅ | Bonne ⚠️ |
+-| **Évolutivité vers app complète** | Excellente ✅ | Bonne ✅ | Limitée ⚠️ | Nulle ❌ |
+-| **Déploiement simple** | Vercel ✅ | Fly.io / Vercel ✅ | Vercel / Netlify ✅ | Hébergé ✅ |
+-| **Time-to-market** | Rapide ✅ | Rapide ✅ | Très rapide ✅ | Très rapide ✅ |
+-
+-### 4.2 ✅ Choix retenu : **Next.js 15 + Vercel**
+-
+-- Mix Landing SSG + Shop SSR parfaitement géré
+-- Déploiement zéro config sur Vercel
+-- Évolutif si le web grandit (dashboard tatoueur, espace client)
+-
+----
+-
+-## 5. Backend & API
+-
+-### 5.1 Architecture : Monolithe modulaire vs Microservices
+-
+-| Critère | Monolithe modulaire | Microservices |
+-|---|---|---|
+-| **Complexité initiale** | Faible ✅ | Élevée ❌ |
+-| **Coût infra** | Faible ✅ | Élevé ❌ |
+-| **Pertinent à 800 tatoueurs** | Oui ✅ | Non, sur-dimensionné ❌ |
+-| **Évolutivité vers microservices** | Migration possible ✅ | N/A |
+-| **Débogage** | Simple ✅ | Complexe ❌ |
+-| **Temps de dev** | Rapide ✅ | Lent ❌ |
+-
+-> **Décision** : **Monolithe modulaire** en phase 1. Les domaines (auth, booking, shop, messagerie) sont des modules Laravel séparés mais dans une seule application. Migration microservices si la charge dépasse 50k utilisateurs actifs.
+-
+-### 5.2 Options Framework Backend
+-
+-| Critère | **Laravel 11** | NestJS | Express.js | Symfony |
+-|---|---|---|---|---|
+-| **Langage** | PHP 8.3 ✅ | TypeScript ✅ | JS/TS ⚠️ | PHP 8.3 ✅ |
+-| **Architecture** | MVC modulaire, opinionated ✅ | Modulaire, Angular-like ✅ | Libre ⚠️ | Très structuré ⚠️ |
+-| **ORM intégré** | Eloquent (natif, excellent) ✅ | Prisma/TypeORM ⚠️ | Manuel ❌ | Doctrine ⚠️ |
+-| **Auth native** | Sanctum / Passport ✅ | Libs tierces ⚠️ | Libs tierces ❌ | Libs tierces ⚠️ |
+-| **WebSocket** | Laravel Reverb (officiel 2024) ✅ | Socket.io natif ✅ | Socket.io ⚠️ | Mercure ⚠️ |
+-| **Queue / Jobs async** | Horizon + Redis (natif) ✅ | BullMQ ⚠️ | Manuel ❌ | Messenger ⚠️ |
+-| **Paiements Stripe** | Laravel Cashier (natif) ✅ | SDK JS ⚠️ | SDK JS ⚠️ | SDK PHP ⚠️ |
+-| **Time-to-market** | Très rapide ✅ | Rapide ✅ | Moyen ⚠️ | Lent ❌ |
+-| **Documentation** | Excellente ✅ | Très bonne ✅ | Bonne ✅ | Bonne ✅ |
+-| **Performance (Octane)** | Très bonne ✅ | Excellente ✅ | Bonne ⚠️ | Bonne ⚠️ |
+-| **Courbe d'apprentissage** | Faible ✅ | Moyenne ⚠️ | Faible ✅ | Élevée ❌ |
+-
+-### 5.3 Écosystème Laravel first-party
+-
+-L'un des avantages majeurs de Laravel est son écosystème first-party qui couvre la quasi-totalité des besoins sans librairie tierce :
+-
+-| Besoin | Package Laravel natif | Alternative NestJS |
+-|---|---|---|
+-| Auth API (tokens) | **Sanctum** | Passport.js + config manuelle |
+-| OAuth social (Google, Apple) | **Socialite** | Config OAuth2 manuelle |
+-| Abonnements Stripe | **Cashier** | Stripe SDK + code custom |
+-| Queues & jobs async | **Horizon** (dashboard inclus) | BullMQ + config |
+-| WebSocket serveur | **Reverb** | Socket.io |
+-| Notifications (push, email, SMS) | **Notifications** (natif) | Libs tierces |
+-| Performance (keep-alive) | **Octane** (Swoole/RoadRunner) | Fastify adapter |
+-| Monitoring queues | **Telescope** + **Horizon** | Datadog custom |
+-| Tests | **Pest PHP** | Jest |
+-| Scheduled tasks (CRON) | **Task Scheduling** natif | node-cron |
+-
+-### 5.4 ✅ Choix retenu : **Laravel 11 + Octane (Swoole)**
+-
+----
+-
+-## 6. Base de données
+-
+-### 6.1 Besoins spécifiques
+-
+-- **Géospatial** : recherche de tatoueurs par distance → PostGIS
+-- **Relations complexes** : users ↔ artists ↔ bookings ↔ reviews ↔ messages
+-- **Données sensibles** : pathologies (chiffrement au repos)
+-- **Charge** : faible à modérée (France, <100k users en phase 1)
+-
+-### 6.2 Comparaison base principale
+-
+-| Critère | PostgreSQL | MySQL | MongoDB | Supabase (PG managé) |
+-|---|---|---|---|---|
+-| **Géospatial (PostGIS)** | Excellent ✅ | Basique ⚠️ | Bon (GeoJSON) ✅ | Excellent ✅ |
+-| **Relations complexes** | Excellent ✅ | Bon ✅ | Inadapté ❌ | Excellent ✅ |
+-| **JSON / flexibilité** | JSONB natif ✅ | Limité ⚠️ | Natif ✅ | JSONB natif ✅ |
+-| **Eloquent (Laravel)** | ✅ | ✅ | Via lib tierce ⚠️ | ✅ |
+-| **Chiffrement données sensibles** | pgcrypto ✅ | Oui ✅ | Oui ✅ | pgcrypto ✅ |
+-| **Coût early-stage** | Selon hébergement ⚠️ | Selon hébergement ⚠️ | Atlas limité ⚠️ | Gratuit 500MB ✅ |
+-| **Migrations Laravel** | ✅ | ✅ | Partiel ⚠️ | ✅ |
+-
+-### 6.3 Cache / Sessions
+-
+-| Besoin | Redis (self-hosted) | Upstash (Redis serverless) |
+-|---|---|---|
+-| **Sessions Laravel** | ✅ | ✅ |
+-| **Cache API** | ✅ | ✅ |
+-| **Queues Laravel Horizon** | ✅ (requis) | ✅ |
+-| **WebSocket Reverb (pub/sub)** | ✅ | ✅ |
+-| **Coût early-stage** | ~$15/mois ⚠️ | Pay-per-use ✅ |
+-| **Gestion infra** | À héberger ⚠️ | Managé ✅ |
+-
+-### 6.4 ✅ Choix retenu
+-
+-| Composant | Choix | Justification |
+-|---|---|---|
+-| **Base principale** | **Supabase** (PostgreSQL + PostGIS) | Managé, géospatial, région EU, RGPD |
+-| **Cache / Sessions / Queues** | **Upstash Redis** | Serverless, compatible Horizon, pay-per-use |
+-| **ORM** | **Eloquent** (natif Laravel) | Natif, migrations, relations, très productif |
+-
+-> **Note** : Supabase est PostgreSQL pur. Laravel s'y connecte exactement comme à un PostgreSQL classique. Zéro friction avec Eloquent.
+-
+----
+-
+-## 7. Paiements
+-
+-### 7.1 Besoins
+-
+-- Acompte (% du devis) à la réservation
+-- Paiement du solde après RDV
+-- Abonnement mensuel tatoueur (SaaS)
+-- Paiement de la certification
+-- Boutique (paiement one-shot produits)
+-- Marketplace potentielle (encaissement + reversement tatoueur)
+-
+-### 7.2 Comparaison
+-
+-| Critère | **Stripe** | Mollie | PayPlug | Sumeria |
+-|---|---|---|---|---|
+-| **Acomptes** | ✅ Payment Intents | ✅ | Partiel ⚠️ | ❌ |
+-| **Abonnements** | ✅ Billing | ✅ | ❌ | ❌ |
+-| **Marketplace** | ✅ Connect | ⚠️ | ❌ | ❌ |
+-| **Laravel Cashier** | ✅ natif | ❌ | ❌ | ❌ |
+-| **Apple/Google Pay** | ✅ | ✅ | ⚠️ | ❌ |
+-| **SDK React Native** | ✅ officiel | ⚠️ | ❌ | ❌ |
+-| **Conformité DSP2/RGPD** | ✅ | ✅ | ✅ | ✅ |
+-| **Frais EU** | 1.5% + 0.25€ | 1.2% + 0.25€ | 1.2% + 0.25€ | Variable |
+-| **Dashboard** | Excellent ✅ | Bon ✅ | Moyen ⚠️ | Basique ❌ |
+-
+-### 7.3 ✅ Choix retenu : **Stripe + Laravel Cashier**
+-
+-- **Laravel Cashier** gère nativement les abonnements, factures et trials → zéro code custom
+-- Stripe Connect pour le modèle marketplace (reversement automatique aux tatoueurs)
+-- SDK React Native officiel pour le paiement in-app
+-- Seul provider couvrant l'ensemble des besoins
+-
+----
+-
+-## 8. Stockage des médias & Protection des photos
+-
+-### 8.1 Besoins
+-
+-- Upload photos de réalisations (tatoueurs)
+-- Optimisation automatique (compression, WebP)
+-- Protection anti-téléchargement (URLs signées, expiration)
+-- Watermarking automatique
+-- Transformation à la volée (thumbnails, galerie, AR)
+-- Coût maîtrisé en early stage
+-
+-### 8.2 Comparaison
+-
+-| Critère | **Cloudinary** | AWS S3 + CloudFront | Uploadcare | Bunny.net |
+-|---|---|---|---|---|
+-| **Transformation images** | Natif, puissant ✅ | Via Lambda@Edge ⚠️ | Bon ✅ | Basique ⚠️ |
+-| **Watermarking auto** | Natif ✅ | Manuel (Lambda) ⚠️ | Natif ✅ | Non ❌ |
+-| **URLs signées** | ✅ | ✅ | ✅ | ✅ |
+-| **CDN intégré** | ✅ | ✅ | ✅ | ✅ excellent |
+-| **SDK Laravel** | ✅ | ✅ (Flysystem) | ✅ | ⚠️ |
+-| **Coût early-stage** | Gratuit 25GB ✅ | Pay-per-use ✅ | Gratuit 10GB ⚠️ | Très faible ✅ |
+-| **Complexité setup** | Faible ✅ | Élevée ⚠️ | Faible ✅ | Moyenne ⚠️ |
+-
+-### 8.3 ✅ Choix retenu : **Cloudinary**
+-
+-- Watermarking et protection des photos sans développement custom
+-- Transformations à la volée (crucial pour les vues galerie, FYP, AR)
+-- Free tier généreux pour la phase de démarrage
+-- URLs signées avec expiration pour le DRM léger
+-
+----
+-
+-## 9. Messagerie temps réel
+-
+-### 9.1 Besoins
+-
+-- Messagerie 1-to-1 (patient ↔ tatoueur)
+-- Données potentiellement médicales → conformité RGPD impérative
+-- Pièces jointes (photos)
+-- Indicateur "lu / non lu"
+-- Notifications push sur nouveau message
+-- Volume faible (~800 tatoueurs, conversations ponctuelles)
+-
+-### 9.2 Comparaison
+-
+-| Critère | **Laravel Reverb** | Supabase Realtime | Stream Chat | Firebase RTDB |
+-|---|---|---|---|---|
+-| **Intégration Laravel** | Natif (first-party) ✅ | Via client JS ⚠️ | SDK PHP ✅ | SDK PHP ⚠️ |
+-| **Laravel Broadcasting** | ✅ natif | ⚠️ adapter custom | ❌ | ⚠️ |
+-| **Contrôle total données** | ✅ self-hosted | ✅ | ❌ SaaS tiers | ❌ Google |
+-| **Conformité RGPD EU** | ✅ | ✅ région EU | ⚠️ US par défaut | ❌ Google US |
+-| **Coût** | Infra incluse ✅ | Inclus Supabase ✅ | Gratuit <100 MAU ⚠️ | Gratuit limité ⚠️ |
+-| **Temps de dev** | Court (Broadcasting natif) ✅ | Moyen ⚠️ | Très court ✅ | Court ✅ |
+-| **SDK React Native** | Via Echo client ✅ | ✅ | ✅ | ✅ |
+-| **Scalabilité** | Bonne (Redis pub/sub) ✅ | Limitée ⚠️ | Excellente ✅ | Bonne ✅ |
+-
+-> ⚠️ **Point critique RGPD** : les échanges peuvent contenir des informations médicales (photos de pathologies, descriptions). Héberger la messagerie chez un tiers américain (Firebase, Stream) est risqué sans DPA solide et transferts encadrés.
+-
+-### 9.3 ✅ Choix retenu : **Laravel Reverb**
+-
+-- Package officiel Laravel (sorti 2024), intégration zéro-friction avec Broadcasting
+-- Self-hosted → données restent sur notre infrastructure EU
+-- S'appuie sur Upstash Redis pour le pub/sub en multi-process
+-- Laravel Echo client disponible pour React Native
+-
+----
+-
+-## 10. Maps & Géolocalisation
+-
+-### 10.1 Besoins
+-
+-- Affichage tatoueurs sur carte
+-- Recherche par rayon autour de l'utilisateur
+-- Filtres dynamiques (spécialité, certification, distance)
+-- Clustering de marqueurs
+-- Usage France uniquement
+-
+-### 10.2 Comparaison
+-
+-| Critère | **Mapbox** | Google Maps | Leaflet + OSM | Apple Maps |
+-|---|---|---|---|---|
+-| **Qualité carto France** | Excellente ✅ | Excellente ✅ | Bonne ✅ | Bonne ✅ |
+-| **SDK React Native** | ✅ | ✅ | ⚠️ wrapper communautaire | iOS uniquement ❌ |
+-| **SDK Web (Next.js)** | ✅ | ✅ | ✅ | ⚠️ |
+-| **Clustering natif** | ✅ | ✅ | Via plugins ⚠️ | ⚠️ |
+-| **Personnalisation** | Excellente ✅ | Limitée ⚠️ | Bonne ✅ | Limitée ⚠️ |
+-| **Coût early-stage** | 50k chargements/mois gratuits ✅ | $200 crédit/mois ✅ | Gratuit ✅ | Gratuit ✅ |
+-| **Coût à l'échelle** | ~$0.5/1000 tiles ⚠️ | Peut devenir cher ❌ | Gratuit ✅ | Gratuit ✅ |
+-| **RGPD / endpoint EU** | ✅ option EU | ⚠️ transferts US | ✅ | ✅ |
+-
+-### 10.3 ✅ Choix retenu : **Mapbox**
+-
+-- Meilleure personnalisation visuelle (identité de l'app)
+-- SDK unifié RN + Web
+-- Free tier suffisant pour le démarrage en France
+-- Endpoint EU disponible pour conformité RGPD
+-
+----
+-
+-## 11. Authentification
+-
+-### 11.1 Besoins
+-
+-- Email / mot de passe
+-- OAuth Google + Apple (obligatoire App Store)
+-- Gestion des rôles (client, tatoueur, admin)
+-- Sessions sécurisées pour l'API mobile
+-- Onboarding post-inscription
+-
+-### 11.2 Comparaison
+-
+-| Critère | **Sanctum + Socialite** | Supabase Auth | Clerk | Firebase Auth |
+-|---|---|---|---|---|
+-| **OAuth Google / Apple** | ✅ via Socialite | ✅ natif | ✅ natif | ✅ natif |
+-| **Auth API mobile (tokens)** | ✅ Sanctum natif | ✅ | ✅ | ✅ |
+-| **Gestion des rôles** | ✅ Gates / Policies | Via JWT custom ✅ | ✅ | Via Custom Claims ⚠️ |
+-| **Contrôle total** | ✅ self-hosted | ✅ | ⚠️ SaaS | ⚠️ Google |
+-| **RGPD / données EU** | ✅ self-hosted | ✅ région EU | ⚠️ US par défaut | ❌ Google US |
+-| **Coût** | Inclus Laravel ✅ | Inclus Supabase ✅ | Gratuit <10k MAU ✅ | Gratuit ✅ |
+-| **Temps de dev** | Court ✅ | Court ✅ | Très court ✅ | Court ✅ |
+-| **MFA** | Via lib tierce ⚠��� | ✅ natif | ✅ natif | ✅ natif |
+-
+-### 11.3 ✅ Choix retenu : **Laravel Sanctum + Socialite**
+-
+-- Sanctum : auth API par tokens pour React Native
+-- Socialite : Google + Apple Sign-In natif Laravel
+-- Gates & Policies : gestion fine des rôles (client, tatoueur, admin)
+-- Données d'auth sur notre propre infra EU
+-
+----
+-
+-## 12. Hébergement & Déploiement
+-
+-### 12.1 Web (Next.js)
+-
+-| Option | Coût early-stage | Simplicité | Performance France |
+-|---|---|---|---|
+-| **Vercel** | Gratuit → $20/mois ✅ | Très simple ✅ | CDN Europe ✅ |
+-| Netlify | Gratuit → $19/mois ✅ | Simple ✅ | CDN Europe ✅ |
+-| AWS Amplify | Pay-per-use ✅ | Moyen ⚠️ | ✅ |
+-
+-**✅ Retenu : Vercel** — Zero config, preview deployments sur chaque PR.
+-
+-### 12.2 Backend Laravel
+-
+-| Option | Coût early-stage | Simplicité | Laravel-ready |
+-|---|---|---|---|
+-| **Railway** | $5–20/mois ✅ | Très simple ✅ | ✅ Docker |
+-| Render | $7+/mois ✅ | Simple ✅ | ✅ Docker |
+-| Fly.io | ~$10/mois ✅ | Simple ✅ | ✅ Docker |
+-| Forge + VPS (Hetzner/Scaleway) | ~$20/mois ✅ | Laravel natif ✅ | ✅ optimisé |
+-| AWS ECS | $50+/mois ❌ | Complexe ❌ | ✅ |
+-
+-**✅ Retenu : Railway** pour le démarrage  
+-**Alternative** : **Laravel Forge + Hetzner** (VPS Frankfurt) si besoin de contrôle total et hébergement 100% EU.
+-
+-### 12.3 Coût estimé mensuel (phase démarrage)
+-
+-| Service | Plan | Coût/mois |
+-|---|---|---|
+-| Vercel | Pro | ~$20 |
+-| Railway (Laravel) | Starter | ~$10–20 |
+-| Supabase | Pro | ~$25 |
+-| Upstash Redis | Pay-per-use | ~$5 |
+-| Cloudinary | Free tier | $0 |
+-| Mapbox | Free tier | $0 |
+-| Stripe | % transactions | $0 fixe |
+-| **Total estimé** | | **~$60–70/mois** |
+-
+----
+-
+-## 13. Synthèse des choix retenus
+-
+-| Couche | Technologie retenue | Alternative écartée | Raison principale |
+-|---|---|---|---|
+-| **App mobile** | React Native + Expo | Flutter, Natif | Time-to-market, écosystème |
+-| **AR** | RN Vision Camera | ARKit/ARCore natif | Suffisant V1, coût dev |
+-| **Web** | Next.js 15 + Vercel | Astro, Webflow | Évolutivité, shop dynamique |
+-| **Backend** | Laravel 11 + Octane | NestJS, Symfony | Productivité, écosystème natif |
+-| **Architecture** | Monolithe modulaire | Microservices | Charge faible, petite équipe |
+-| **WebSocket** | Laravel Reverb | Socket.io, Stream Chat | First-party, self-hosted, RGPD |
+-| **Auth** | Sanctum + Socialite | Clerk, Firebase | Natif Laravel, self-hosted EU |
+-| **Paiements** | Stripe + Cashier | Mollie, PayPlug | Cashier natif, couverture complète |
+-| **Base de données** | Supabase (PostgreSQL) | MySQL, MongoDB | Géospatial, RGPD EU, managé |
+-| **ORM** | Eloquent | Prisma, TypeORM | Natif Laravel, très productif |
+-| **Cache / Queues** | Upstash Redis | ElastiCache | Serverless, pay-per-use |
+-| **Médias** | Cloudinary | S3 + Lambda | Watermark et DRM sans code custom |
+-| **Maps** | Mapbox | Google Maps | Personnalisation, endpoint EU |
+-| **Hébergement web** | Vercel | Netlify | Intégration Next.js native |
+-| **Hébergement API** | Railway | AWS ECS | Simplicité, coût early-stage |
+-
+-### Principe directeur
+-
+-> **"Maximiser la vélocité de développement grâce à l'écosystème Laravel first-party, minimiser les coûts d'infrastructure, sans créer de dette technique bloquante pour la scale-up."**
+-
+-Laravel couvre nativement (Cashier, Reverb, Sanctum, Socialite, Horizon, Octane) la quasi-totalité des besoins sans librairie tierce. La stack mobile et web reste en TypeScript (React Native + Next.js), les deux couches communiquant avec le backend Laravel via une API REST + WebSocket standard.
+-
+----
+-
+-*Document soumis à validation. Toute modification doit être discutée en équipe et versionnée.*
+\ No newline at end of file

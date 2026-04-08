@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="bc9bc807-a48e-4e8a-909a-82617e3a7608" name="Changes" comment="[feat] - start Mobile app mocked">
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/php.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/prettier.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_20_03_2026,_10_06_[Changes]/shelved.patch" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_Checkout_at_20_03_2026__10_06__Changes_.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(onboarding)/_layout.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(onboarding)/goal.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(onboarding)/index.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(onboarding)/login.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(onboarding)/reason.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(onboarding)/signup.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/explore/_layout.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/explore/artist.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/explore/index.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/explore/map.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/messages/_layout.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/messages/chat.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/messages/index.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/messages/new.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/profile.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/rdv.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/shop/_layout.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/shop/cart.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/shop/index.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/app/(tabs)/shop/product.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/components/onboarding/BrandMark.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/components/onboarding/ComplianceFooter.tsx" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/constants/guest.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/constants/onboarding.ts" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Application/contexts/OnboardingContext.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Application/app/(tabs)/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/Application/app/(tabs)/_layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Application/app/(tabs)/explore.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Application/app/(tabs)/index.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/Application/app/(tabs)/index.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Application/app/_layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/Application/app/_layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Application/app/modal.tsx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/Application/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/Application/package-lock.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Application/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/Application/package.json" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ComposerSettings">
+    <execution />
+  </component>
+  <component name="Git.Settings">
+    <favorite-branches>
+      <branch-storage>
+        <map>
+          <entry type="REMOTE">
+            <value>
+              <list>
+                <branch-info repo="$PROJECT_DIR$" source="origin/docs" />
+              </list>
+            </value>
+          </entry>
+        </map>
+      </branch-storage>
+    </favorite-branches>
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="docs" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+    <option name="UPDATE_TYPE" value="REBASE" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;EliXorZz&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;git@github.com:MaxOuvrard/BloomInk.git&quot;,
+    &quot;accountId&quot;: &quot;5d2ae552-f1b8-4e11-b5b5-b1006226436e&quot;
+  }
+}</component>
+  <component name="KubernetesApiPersistence"><![CDATA[{}]]></component>
+  <component name="KubernetesApiProvider"><![CDATA[{
+  "isMigrated": true
+}]]></component>
+  <component name="PhpWorkspaceProjectConfiguration" interpreter_name="/nix/store/lq51lhs7ld4x64i0f8azjj8jjmqf2hil-php-with-extensions-8.4.10/bin/php" />
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="3AFrEvMXXf3PP3dovccSdP5WBGx" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/dylan/MyDigitalSchool/BloomInk/Application/app/(onboarding)&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;/Users/dylan/MyDigitalSchool/BloomInk/Application/node_modules/typescript/lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/Application/app/(onboarding)" />
+      <recent name="$PROJECT_DIR$/Application/app/(tabs)" />
+      <recent name="$PROJECT_DIR$/Conception" />
+    </key>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-js-predefined-d6986cc7102b-deb605915726-JavaScript-PS-243.22562.233" />
+        <option value="bundled-php-predefined-a98d8de5180a-7980c7aaca61-com.jetbrains.php.sharedIndexes-PS-243.22562.233" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="bc9bc807-a48e-4e8a-909a-82617e3a7608" name="Changes" comment="" />
+      <created>1772199053455</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1772199053455</updated>
+      <workItem from="1772199056858" duration="785000" />
+      <workItem from="1772199868931" duration="4259000" />
+      <workItem from="1773907549076" duration="3204000" />
+      <workItem from="1773991042773" duration="20345000" />
+      <workItem from="1775633373373" duration="7474000" />
+    </task>
+    <task id="LOCAL-00001" summary="[chore] - Dossier technique">
+      <option name="closed" value="true" />
+      <created>1773909315315</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1773909315315</updated>
+    </task>
+    <task id="LOCAL-00002" summary="[chore] - Dossier technique update">
+      <option name="closed" value="true" />
+      <created>1773997601751</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1773997601751</updated>
+    </task>
+    <task id="LOCAL-00003" summary="[chore] - Dossier technique update">
+      <option name="closed" value="true" />
+      <created>1773998894613</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1773998894613</updated>
+    </task>
+    <task id="LOCAL-00004" summary="[chore] - Dossier technique update">
+      <option name="closed" value="true" />
+      <created>1774000668831</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1774000668831</updated>
+    </task>
+    <task id="LOCAL-00005" summary="[chore] - Dossier technique update">
+      <option name="closed" value="true" />
+      <created>1774001396097</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1774001396097</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="[chore] - Dossier technique" />
+    <MESSAGE value="[chore] - Dossier technique update" />
+    <MESSAGE value="[feat] - start Mobile app mocked" />
+    <option name="LAST_COMMIT_MESSAGE" value="[feat] - start Mobile app mocked" />
+  </component>
+</project>
