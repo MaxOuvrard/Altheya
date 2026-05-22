@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Graphie";
+  src: url("/fonts/Graphie-Thin.otf") format("opentype");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Graphie";
+  src: url("/fonts/Graphie-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Graphie";
+  src: url("/fonts/Graphie-Bold.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --anthracite: #29292e;
+  --warm-grey: #b5a09d;
+  --cloud-dancer: #f1f0ec;
+  --background: var(--cloud-dancer);
+  --foreground: var(--anthracite);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-anthracite: var(--anthracite);
+  --color-warm-grey: var(--warm-grey);
+  --color-cloud-dancer: var(--cloud-dancer);
+  --font-sans: var(--font-geist-sans);
+  --font-script: var(--font-script);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
